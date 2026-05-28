@@ -39,6 +39,8 @@ PostToolUse → 橙灯恢复（running）
 Stop → 绿灯（done）
 ```
 
+- Codex CLI 需在 `~/.codex/config.toml` 中启用 `[features] hooks = true`（install.ps1 自动配置）
+
 ## 已知问题
 
 - OpenCode 原生仅支持 UserPromptSubmit / Stop 两个 hook 事件，完整支持需安装 `opencode-claude-hooks` 插件

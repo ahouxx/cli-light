@@ -255,9 +255,22 @@ function Install-CodexHooks {
         New-Item -ItemType Directory -Path $configDir -Force | Out-Null
     }
 
+    # Enable hooks feature in config.toml
+    $tomlPath = Join-Path $configDir "config.toml"
+    if (Test-Path $tomlPath) {
+        $toml = Get-Content $tomlPath -Raw -Encoding UTF8
+        if ($toml -notmatch '\[features\]') {
+            $toml = $toml.TrimEnd() + "`n`n[features]`nhooks = true`n"
+            Write-File $tomlPath $toml
+        } elseif ($toml -notmatch 'hooks\s*=\s*true') {
+            $toml = $toml -replace '\[features\][\s\S]*?(\n\[|\z)', "[features]`nhooks = true`n`n`$1"
+            Write-File $tomlPath $toml
+        }
+    }
+
     $hooksObj = @{
         hooks = @{
-            userPromptSubmitted = @(
+            UserPromptSubmit = @(
                 @{
                     matcher = ""
                     hooks = @(
@@ -265,7 +278,7 @@ function Install-CodexHooks {
                     )
                 }
             )
-            postToolUse = @(
+            PostToolUse = @(
                 @{
                     matcher = ""
                     hooks = @(
@@ -285,7 +298,7 @@ function Install-CodexHooks {
 
     $json = $hooksObj | ConvertTo-Json -Depth 6
     Write-File $configPath $json
-    Write-Host "  OK (userPromptSubmitted + postToolUse + Stop)" -ForegroundColor Green
+    Write-Host "  OK (+ hooks enabled in config.toml)" -ForegroundColor Green
 }
 
 function Remove-CodexHooks {
