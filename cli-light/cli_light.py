@@ -55,7 +55,17 @@ THEMES = {
         "menu_abg": "#DDD", "menu_afg": "#000",
         "num_fg": "#FFF",
     },
+    "transparent": {
+        "housing": _TRANSCOLOR, "lens_off": "#303030",
+        "canvas_bg": _TRANSCOLOR, "lens_outline": "#111",
+        "divider": "#FFF", "housing_outline": "#666",
+        "menu_bg": "#2A2A2A", "menu_fg": "#FFF",
+        "menu_abg": "#444", "menu_afg": "#FFF",
+        "num_fg": "#FFF",
+    },
 }
+
+_TRANSCOLOR = "#010101"  # color key for transparent background
 
 def _detect_system_theme():
     try:
@@ -135,6 +145,7 @@ class CLILight:
         self.theme = saved.get("theme", "dark")
         self.opacity = saved.get("opacity", 100)
         self.root.geometry(f"{W}x{H}+{x}+{y}")
+        self._apply_transparent_mode()
         self.root.attributes("-alpha", self.opacity / 100)
 
         self._build_ui()
@@ -209,7 +220,8 @@ class CLILight:
         tc = self._theme_colors()
         self.canvas.delete("static")
         self.canvas.config(bg=tc["canvas_bg"])
-        self._round_rect(0, 0, W, H, 10, fill=tc["housing"],
+        fill = tc["housing"]
+        self._round_rect(0, 0, W, H, 10, fill=fill,
                          outline=tc["housing_outline"], width=1, tags="static")
 
     def _round_rect(self, x1, y1, x2, y2, r, **kw):
@@ -283,7 +295,7 @@ class CLILight:
         self._theme_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
                                    activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
                                    font=("Microsoft YaHei", 9))
-        for key, label in [("dark", "深色"), ("light", "浅色"), ("system", "系统")]:
+        for key, label in [("dark", "深色"), ("light", "浅色"), ("system", "系统"), ("transparent", "透明")]:
             self._theme_menu.add_command(
                 label=self._menu_label(label, self.theme == key),
                 command=lambda k=key: self._set_theme(k))
@@ -310,17 +322,26 @@ class CLILight:
         tc = self._theme_colors()
         self._theme_menu.config(bg=tc["menu_bg"], fg=tc["menu_fg"],
                                 activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"])
-        for i, key in enumerate(["dark", "light", "system"]):
+        for i, key in enumerate(["dark", "light", "system", "transparent"]):
             self._theme_menu.entryconfigure(i, label=self._menu_label(
-                {"dark": "深色", "light": "浅色", "system": "系统"}[key], self.theme == key))
+                {"dark": "深色", "light": "浅色", "system": "系统", "transparent": "透明"}[key], self.theme == key))
         for i, pct in enumerate([100, 80, 60, 40]):
             self._opacity_menu.entryconfigure(i, label=self._menu_label(f"{pct}%", self.opacity == pct))
 
     def _set_theme(self, theme):
         self.theme = theme
+        self._apply_transparent_mode()
         self._refresh_menu()
         self._rebuild_ui()
         self._save_state()
+
+    def _apply_transparent_mode(self):
+        if self.theme == "transparent":
+            self.root.attributes("-transparentcolor", _TRANSCOLOR)
+            self.root.configure(bg=_TRANSCOLOR)
+        else:
+            self.root.attributes("-transparentcolor", "")
+            self.root.configure(bg="#000000")
 
     def _rebuild_ui(self):
         tc = self._theme_colors()
