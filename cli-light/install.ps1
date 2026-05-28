@@ -289,46 +289,83 @@ shell.Run """" & pythonw & """ """ & mainScript & """", 0, False
     Write-Host "  OK (pythonw: $pythonw)" -ForegroundColor Green
 }
 
-# ── Desktop shortcut ─────────────────────────────────────────
-function Add-DesktopShortcut {
-    $desktopDir = [Environment]::GetFolderPath('Desktop')
-    $shortcutPath = Join-Path $desktopDir "CLI Light.lnk"
-    $vbsPath = Join-Path $ScriptDir "launch.vbs"
-
+# ── Shortcuts ────────────────────────────────────────────────
+function _New-Shortcut {
+    param([string]$Path, [string]$Target, [string]$Arguments, [string]$WorkingDir, [string]$Description)
     $WshShell = New-Object -ComObject WScript.Shell
-    $shortcut = $WshShell.CreateShortcut($shortcutPath)
-    $shortcut.TargetPath = $vbsPath
-    $shortcut.WorkingDirectory = $ScriptDir
-    $shortcut.Description = "CLI Light — desktop traffic light for CLI status"
-    $shortcut.Save()
-    Write-Host "  OK -> $shortcutPath" -ForegroundColor Green
+    $s = $WshShell.CreateShortcut($Path)
+    $s.TargetPath = $Target
+    if ($Arguments) { $s.Arguments = $Arguments }
+    $s.WorkingDirectory = $WorkingDir
+    $s.Description = $Description
+    $s.Save()
 }
 
-function Remove-DesktopShortcut {
+function Add-Shortcuts {
+    $vbsPath = Join-Path $ScriptDir "launch.vbs"
+    $ps1Path = Join-Path $ScriptDir "install.ps1"
+    $startMenu = [Environment]::GetFolderPath('Programs')
+    $smDir = Join-Path $startMenu "CLI Light"
+
+    # Ensure clean Start Menu folder
+    if (Test-Path $smDir) { Remove-Item "$smDir\*" -Force -ErrorAction SilentlyContinue }
+    else { New-Item -ItemType Directory -Path $smDir -Force | Out-Null }
+
+    # Start Menu: launch
+    _New-Shortcut (Join-Path $smDir "CLI Light.lnk") $vbsPath -WorkingDir $ScriptDir -Description "CLI Light"
+    # Start Menu: uninstall
+    _New-Shortcut (Join-Path $smDir "Uninstall CLI Light.lnk") "powershell.exe" `
+        -Arguments "-NoProfile -ExecutionPolicy Bypass -File `"$ps1Path`" -Uninstall" `
+        -WorkingDir $ScriptDir -Description "Uninstall CLI Light"
+
+    # Desktop
     $desktopDir = [Environment]::GetFolderPath('Desktop')
-    $shortcutPath = Join-Path $desktopDir "CLI Light.lnk"
-    if (Test-Path $shortcutPath) {
-        Remove-Item $shortcutPath -Force
-        Write-OK
-    } else {
-        Write-Skip
-    }
+    _New-Shortcut (Join-Path $desktopDir "CLI Light.lnk") $vbsPath -WorkingDir $ScriptDir -Description "CLI Light"
+
+    Write-Host "  OK (Desktop + Start Menu)" -ForegroundColor Green
+}
+
+function Remove-Shortcuts {
+    $desktopDir = [Environment]::GetFolderPath('Desktop')
+    $desktopLink = Join-Path $desktopDir "CLI Light.lnk"
+    if (Test-Path $desktopLink) { Remove-Item $desktopLink -Force }
+
+    $startMenu = [Environment]::GetFolderPath('Programs')
+    $smDir = Join-Path $startMenu "CLI Light"
+    if (Test-Path $smDir) { Remove-Item $smDir -Recurse -Force; Write-OK }
+    else { Write-Skip }
+}
+
+# ── Uninstall batch script ───────────────────────────────────
+function New-UninstallBat {
+    $batPath = Join-Path $ScriptDir "uninstall.bat"
+    $ps1Path = Join-Path $ScriptDir "install.ps1"
+    $content = @"
+@echo off
+echo Uninstalling CLI Light...
+powershell -NoProfile -ExecutionPolicy Bypass -File "$ps1Path" -Uninstall
+pause
+"@
+    Set-Content $batPath -Value $content -Encoding ASCII
 }
 
 # ── Kill running instances ──────────────────────────────────
 function Stop-CliLight {
-    Write-Step "Running processes"
-    $killed = $false
+    $count = 0
     Get-Process python -ErrorAction SilentlyContinue | ForEach-Object {
         try {
             $cmdline = (Get-CimInstance Win32_Process -Filter "ProcessId=$($_.Id)").CommandLine
             if ($cmdline -like '*cli_light*') {
                 Stop-Process -Id $_.Id -Force
-                $killed = $true
+                $count++
             }
         } catch {}
     }
-    if ($killed) { Write-OK } else { Write-Skip }
+    if ($count -gt 0) {
+        Write-Host "  Killed $count instance(s)" -ForegroundColor Yellow
+    } else {
+        Write-Skip
+    }
 }
 
 # ── Main ────────────────────────────────────────────────────
@@ -339,9 +376,9 @@ try {
         Remove-KimiHooks
         Remove-OpenCodeHooks
         Write-Host ""
-        Write-Step "Desktop shortcut"
-        Remove-DesktopShortcut
-        Write-Step "Running processes"
+        Write-Step "Shortcuts"
+        Remove-Shortcuts
+        Write-Step "Processes"
         Stop-CliLight
     } else {
         Write-Host "`nInstalling hooks...`n"
@@ -350,9 +387,10 @@ try {
         Install-OpenCodeHooks
         Write-Host ""
         New-LaunchVbs
+        New-UninstallBat
         if (-not $NoDesktop) {
-            Write-Step "Desktop shortcut"
-            Add-DesktopShortcut
+            Write-Step "Shortcuts"
+            Add-Shortcuts
         }
     }
 } catch {
