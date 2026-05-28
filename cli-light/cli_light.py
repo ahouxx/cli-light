@@ -22,6 +22,7 @@ if sys.stderr is None:
     sys.stderr = open(os.devnull, 'w')
 
 user32 = ctypes.windll.user32
+gdi32  = ctypes.windll.gdi32
 HWND_TOPMOST, HWND_NOTOPMOST = -1, -2
 SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE = 0x0001, 0x0002, 0x0010
 GWL_EXSTYLE, WS_EX_TOPMOST = -20, 0x00000008
@@ -253,6 +254,14 @@ class CLILight:
         self.canvas.pack()
         self._draw_housing()
 
+    def _apply_rounded_region(self):
+        """Clip window to rounded rectangle to eliminate black corners."""
+        hwnd = self.root.winfo_id()
+        w, h = self._scaled_wh()
+        r = self._scaled(10)[0] * 2  # corner diameter
+        region = gdi32.CreateRoundRectRgn(0, 0, w + 1, h + 1, r, r)
+        user32.SetWindowRgn(hwnd, region, True)
+
     def _draw_housing(self):
         tc = self._theme_colors()
         self.canvas.delete("static")
@@ -263,6 +272,7 @@ class CLILight:
         outline = "" if self.theme == "transparent" else tc["housing_outline"]
         self._round_rect(0, 0, w, h, r, fill=fill,
                          outline=outline, width=1, tags="static")
+        self.root.after_idle(self._apply_rounded_region)
 
     def _round_rect(self, x1, y1, x2, y2, r, **kw):
         return self.canvas.create_polygon(
