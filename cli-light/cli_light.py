@@ -339,10 +339,12 @@ class CLILight:
         self.canvas.delete(tag)
         if not self._dividers_var.get():
             return
-        # Vertical lines at midpoints between cx: 20, 54, 88, 122 → 37, 71, 105
-        for dx in (37, 71, 105):
-            self.canvas.create_line(dx, 6, dx, H - 6,
-                                    fill="#444", width=1, tags=tag)
+        s, pad = 17, 3  # half-size of frame, padding from edge
+        for key in ("total", "done", "running", "needs_input"):
+            info = self.lights[key]
+            cx, cy = info["cx"], info["cy"]
+            self._round_rect(cx - s, cy - s, cx + s, cy + s, 4,
+                             fill="", outline="#333", width=1, tags=tag)
 
     def _blink_tick(self):
         self.blink_on = not self.blink_on
