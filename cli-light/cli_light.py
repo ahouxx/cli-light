@@ -102,7 +102,9 @@ class CLILight:
         }
 
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        x, y = self._load_position(sw, sh)
+        x, y, saved = self._load_state(sw, sh)
+        self.topmost = saved.get("topmost", True)
+        self.show_dividers = saved.get("dividers", False)
         self.root.geometry(f"{W}x{H}+{x}+{y}")
 
         self._build_ui()
@@ -223,25 +225,38 @@ class CLILight:
 
     # ── Menu ────────────────────────────────────────────
     def _build_menu(self):
-        self.menu = tk.Menu(self.root, tearoff=0, bg="#2a2a2a", fg="#ccc",
+        self.menu = tk.Menu(self.root, tearoff=0, bg="#2a2a2a", fg="#fff",
                             activebackground="#444", activeforeground="#fff",
-                            font=("Microsoft YaHei", 9),
-                            selectcolor="#555")
-        self._topmost_var = tk.BooleanVar(value=True)
-        self.menu.add_checkbutton(label="置顶显示", variable=self._topmost_var,
-                                  command=self._toggle_topmost)
-        self._dividers_var = tk.BooleanVar(value=False)
-        self.menu.add_checkbutton(label="显示边框", variable=self._dividers_var,
-                                  command=self._update)
+                            font=("Microsoft YaHei", 9))
+        self.menu.add_command(label=self._menu_label("置顶显示", self.topmost),
+                              command=self._toggle_topmost)
+        self.menu.add_command(label=self._menu_label("显示边框", self.show_dividers),
+                              command=self._toggle_dividers)
         self.menu.add_separator()
         self.menu.add_command(label="退出", command=self._quit)
+
+    @staticmethod
+    def _menu_label(text, on):
+        return f"✓ {text}" if on else f"    {text}"
+
+    def _refresh_menu(self):
+        self.menu.entryconfigure(0, label=self._menu_label("置顶显示", self.topmost))
+        self.menu.entryconfigure(1, label=self._menu_label("显示边框", self.show_dividers))
 
     def _show_menu(self, event):
         self.menu.post(event.x_root, event.y_root)
 
     def _toggle_topmost(self):
-        self.topmost = self._topmost_var.get()
+        self.topmost = not self.topmost
         self._apply_topmost()
+        self._refresh_menu()
+        self._save_state()
+
+    def _toggle_dividers(self):
+        self.show_dividers = not self.show_dividers
+        self._refresh_menu()
+        self._update()
+        self._save_state()
 
     def _apply_topmost(self):
         hwnd = self.root.winfo_id()
@@ -337,14 +352,14 @@ class CLILight:
     def _draw_dividers(self):
         tag = "dividers"
         self.canvas.delete(tag)
-        if not self._dividers_var.get():
+        if not self.show_dividers:
             return
-        s, pad = 17, 3  # half-size of frame, padding from edge
+        s = 17
         for key in ("total", "done", "running", "needs_input"):
             info = self.lights[key]
             cx, cy = info["cx"], info["cy"]
             self._round_rect(cx - s, cy - s, cx + s, cy + s, 4,
-                             fill="", outline="#333", width=1, tags=tag)
+                             fill="", outline="#FFF", width=1, tags=tag)
 
     def _blink_tick(self):
         self.blink_on = not self.blink_on
@@ -358,29 +373,35 @@ class CLILight:
         return os.path.join(d, "state.json")
 
     @classmethod
-    def _load_position(cls, sw, sh):
+    def _load_state(cls, sw, sh):
         dx, dy = sw - W - 20, 20
         try:
             p = cls._get_state_path()
             if os.path.exists(p):
                 with open(p, 'r') as f:
                     d = json.load(f)
-                x, y = d.get('x', dx), d.get('y', dy)
+                x = d.get('x', dx)
+                y = d.get('y', dy)
                 if x < -W + 30: x = -W + 30
                 if y < -H + 30: y = -H + 30
                 if x > sw - 30: x = sw - 30
                 if y > sh - 30: y = sh - 30
-                return x, y
+                return x, y, d
         except Exception:
             pass
-        return dx, dy
+        return dx, dy, {}
 
     def _save_state(self):
         try:
             p = self._get_state_path()
             os.makedirs(os.path.dirname(p), exist_ok=True)
             with open(p, 'w') as f:
-                json.dump({'x': self.root.winfo_x(), 'y': self.root.winfo_y()}, f)
+                json.dump({
+                    'x': self.root.winfo_x(),
+                    'y': self.root.winfo_y(),
+                    'topmost': self.topmost,
+                    'dividers': self.show_dividers,
+                }, f)
         except Exception:
             pass
 
