@@ -48,7 +48,7 @@ _SCAN_SCRIPT = (
     "$p=$PID;"
     "$c=(Get-Process -Name 'claude','opencode','kimi-cli' -ErrorAction SilentlyContinue|"
     "Where-Object{$_.Id -ne $p}).Count;"
-    "$v=if(Get-Process -Name 'Code' -ErrorAction SilentlyContinue){1}else{0};"
+    "$v=if(Get-Process -Name 'Code' -ErrorAction SilentlyContinue|Where-Object{`$_.MainWindowTitle -ne ''}){1}else{0};"
     "\"$c,$v\""
 )
 
