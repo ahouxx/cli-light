@@ -108,8 +108,9 @@ HOOK_PORT = 9876
 
 _SCAN_SCRIPT = (
     "$myPid=$PID;"
-    "(Get-Process -Name 'claude','opencode','kimi-cli','codex' -ErrorAction SilentlyContinue|"
-    "Where-Object{$_.Id -ne $myPid}).Count"
+    "$procs=Get-Process -Name 'claude','opencode','kimi-cli','codex' -ErrorAction SilentlyContinue|"
+    "Where-Object{$_.Id -ne $myPid};"
+    "\"$($procs.Count)|$($procs.Id -join ',')\""
 )
 
 
@@ -446,7 +447,7 @@ class CLILight:
 
     # ── Process monitor ─────────────────────────────────
     def _scan_processes(self):
-        """Count CLI processes via Get-Process (no temp files, no WMI)."""
+        """Count CLI processes and return set of PIDs. Returns (count, set_of_pids)."""
         try:
             r = subprocess.run(
                 ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
@@ -454,33 +455,34 @@ class CLILight:
                 capture_output=True, text=True, timeout=5,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
-            return int(r.stdout.strip() or 0)
+            parts = r.stdout.strip().split('|')
+            count = int(parts[0] or 0)
+            pids = set()
+            if len(parts) > 1 and parts[1]:
+                for s in parts[1].split(','):
+                    s = s.strip()
+                    if s:
+                        pids.add(f"cli-{s}")
+            return count, pids
         except Exception:
-            return self._process_count
+            return self._process_count, set()
 
     def _process_monitor(self):
         while self._running:
-            new_count = self._scan_processes()
+            new_count, new_pids = self._scan_processes()
             with self._agents_lock:
-                diff = new_count - self._process_count
-                if diff < 0:
-                    excess = -diff
-                    for state in ('running', 'needs_input', 'done'):
-                        if excess <= 0:
-                            break
-                        to_remove = [aid for aid, st in self._agents.items()
-                                     if st == state and aid != "cli-unknown"]
-                        for aid in to_remove:
-                            if excess <= 0:
-                                break
-                            del self._agents[aid]
-                            excess -= 1
-                # If no standalone processes remain, clear all agents.
+                # Remove agents whose processes no longer exist
+                for aid in list(self._agents):
+                    if aid == "cli-unknown":
+                        continue
+                    if aid not in new_pids:
+                        del self._agents[aid]
+                # If no standalone processes remain, clear hook-only too
                 if new_count == 0:
                     self._agents.clear()
+                changed = (new_count != self._process_count)
                 self._process_count = new_count
-                # Push an immediate UI refresh so lights reflect changes right away.
-                if diff != 0:
+                if changed:
                     self.root.after(0, self._update)
             for _ in range(30):
                 if not self._running:
