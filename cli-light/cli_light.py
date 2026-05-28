@@ -296,8 +296,8 @@ class CLILight:
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
         cw = self.root.winfo_width()
         ch = self.root.winfo_height()
-        x = max(-cw + 30, min(sw - 30, x))
-        y = max(-ch + 30, min(sh - 30, y))
+        x = max(0, min(sw - cw, x))
+        y = max(0, min(sh - ch, y))
         self.root.geometry(f"+{x}+{y}")
 
     def _snap_to_edge(self):
@@ -593,10 +593,10 @@ class CLILight:
                     d = json.load(f)
                 x = d.get('x', dx)
                 y = d.get('y', dy)
-                if x < -w + 30: x = -w + 30
-                if y < -h + 30: y = -h + 30
-                if x > sw - 30: x = sw - 30
-                if y > sh - 30: y = sh - 30
+                if x < 0: x = 0
+                if y < 0: y = 0
+                if x > sw - w: x = sw - w
+                if y > sh - h: y = sh - h
                 return x, y, d
         except Exception:
             pass
