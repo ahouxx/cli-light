@@ -133,7 +133,9 @@ class CLILight:
         self.topmost = saved.get("topmost", True)
         self.show_dividers = saved.get("dividers", False)
         self.theme = saved.get("theme", "dark")
+        self.opacity = saved.get("opacity", 100)
         self.root.geometry(f"{W}x{H}+{x}+{y}")
+        self.root.attributes("-alpha", self.opacity / 100)
 
         self._build_ui()
         self._bind_events()
@@ -286,6 +288,15 @@ class CLILight:
                 label=self._menu_label(label, self.theme == key),
                 command=lambda k=key: self._set_theme(k))
         self.menu.add_cascade(label="主题", menu=self._theme_menu)
+        # Opacity submenu
+        self._opacity_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
+                                     activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
+                                     font=("Microsoft YaHei", 9))
+        for pct in (100, 80, 60, 40):
+            self._opacity_menu.add_command(
+                label=self._menu_label(f"{pct}%", self.opacity == pct),
+                command=lambda v=pct: self._set_opacity(v))
+        self.menu.add_cascade(label="透明度", menu=self._opacity_menu)
         self.menu.add_separator()
         self.menu.add_command(label="退出", command=self._quit)
 
@@ -302,6 +313,8 @@ class CLILight:
         for i, key in enumerate(["dark", "light", "system"]):
             self._theme_menu.entryconfigure(i, label=self._menu_label(
                 {"dark": "深色", "light": "浅色", "system": "系统"}[key], self.theme == key))
+        for i, pct in enumerate([100, 80, 60, 40]):
+            self._opacity_menu.entryconfigure(i, label=self._menu_label(f"{pct}%", self.opacity == pct))
 
     def _set_theme(self, theme):
         self.theme = theme
@@ -321,6 +334,12 @@ class CLILight:
     def _toggle_topmost(self):
         self.topmost = not self.topmost
         self._apply_topmost()
+        self._refresh_menu()
+        self._save_state()
+
+    def _set_opacity(self, pct):
+        self.opacity = pct
+        self.root.attributes("-alpha", pct / 100)
         self._refresh_menu()
         self._save_state()
 
@@ -476,6 +495,7 @@ class CLILight:
                     'topmost': self.topmost,
                     'dividers': self.show_dividers,
                     'theme': self.theme,
+                    'opacity': self.opacity,
                 }, f)
         except Exception:
             pass
