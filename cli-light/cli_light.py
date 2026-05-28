@@ -38,6 +38,8 @@ GREEN_DIM  = "#003312"
 RED_DIM    = "#4A0808"
 BLUE_DIM   = "#0A1A33"
 
+_TRANSCOLOR = "#010101"  # color key for transparent background
+
 THEMES = {
     "dark": {
         "housing": "#1A1A1A", "lens_off": "#303030",
@@ -64,8 +66,6 @@ THEMES = {
         "num_fg": "#FFF",
     },
 }
-
-_TRANSCOLOR = "#010101"  # color key for transparent background
 
 def _detect_system_theme():
     try:
