@@ -162,10 +162,7 @@ class CLILight:
 
     def _on_hook(self, agent_id, new_state):
         with self._agents_lock:
-            if new_state == 'done':
-                self._agents.pop(agent_id, None)
-            else:
-                self._agents[agent_id] = new_state
+            self._agents[agent_id] = new_state
         self.root.after(0, self._update)
 
     # ── UI ──────────────────────────────────────────────
@@ -276,7 +273,7 @@ class CLILight:
                 diff = new_count - self._process_count
                 if diff < 0:
                     excess = -diff
-                    for state in ('running', 'needs_input'):
+                    for state in ('running', 'needs_input', 'done'):
                         if excess <= 0:
                             break
                         to_remove = [aid for aid, st in self._agents.items()
@@ -307,25 +304,12 @@ class CLILight:
 
     def _update(self):
         with self._agents_lock:
-            # Process count + hook-only agents (e.g. VS Code extensions with no
-            # standalone process) — take max to avoid double-counting.
+            # Total = max of process count and all known hook agents (including
+            # hook-only agents like VS Code extensions without standalone process).
             total = max(self._process_count, len(self._agents))
             red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
             orange_c = sum(1 for s in self._agents.values() if s == 'running')
-            if red_c + orange_c > total:
-                excess = red_c + orange_c - total
-                for _ in range(excess):
-                    for st in ('needs_input', 'running'):
-                        for aid, s in list(self._agents.items()):
-                            if s == st:
-                                del self._agents[aid]
-                                break
-                        else:
-                            continue
-                        break
-                red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
-                orange_c = sum(1 for s in self._agents.values() if s == 'running')
-        green_c = max(0, total - red_c - orange_c)
+            green_c = sum(1 for s in self._agents.values() if s == 'done')
 
         counts = {"total": total, "done": green_c, "running": orange_c,
                   "needs_input": red_c}
