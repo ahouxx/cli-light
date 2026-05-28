@@ -23,6 +23,13 @@ function Write-OK { Write-Host "  OK" -ForegroundColor Green }
 function Write-Skip { Write-Host "  (skipped)" -ForegroundColor DarkGray }
 function Write-Fail { param([string]$Msg) Write-Host "  FAIL — $Msg" -ForegroundColor Red }
 
+# BOM-free UTF-8 writer (PowerShell Set-Content adds BOM which breaks TOML)
+$Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+function Write-File {
+    param([string]$Path, [string]$Content)
+    [System.IO.File]::WriteAllText($Path, $Content, $Utf8NoBom)
+}
+
 # ── Detect Python (for generating launch.vbs) ───────────────
 function Find-Pythonw {
     # Scan %LOCALAPPDATA%\Programs\Python for any pythonw.exe
@@ -51,7 +58,7 @@ function Install-ClaudeHooks {
         $content = "{`"hooks`": $hooksJson}"
         $parent = Split-Path $settingsPath -Parent
         if (-not (Test-Path $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-        Set-Content $settingsPath -Value $content -Encoding UTF8
+        Write-File $settingsPath $content
         Write-OK
         return
     }
@@ -71,7 +78,7 @@ function Install-ClaudeHooks {
 
     # Write back preserving as much structure as possible
     $newJson = $settings | ConvertTo-Json -Depth 6
-    Set-Content $settingsPath -Value $newJson -Encoding UTF8
+    Write-File $settingsPath $newJson
     Write-OK
 }
 
@@ -83,7 +90,7 @@ function Remove-ClaudeHooks {
         $settings = Get-Content $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
         $settings.PSObject.Properties.Remove("hooks")
         $newJson = $settings | ConvertTo-Json -Depth 6
-        Set-Content $settingsPath -Value $newJson -Encoding UTF8
+        Write-File $settingsPath $newJson
         Write-OK
     } catch {
         Write-Fail "Cannot parse settings.json. Remove 'hooks' key manually."
@@ -176,7 +183,7 @@ hooks = [
         } else {
             $newContent = $content.TrimEnd() + "`n`n$hooksBlock`n"
         }
-        Set-Content $configPath -Value $newContent -Encoding UTF8 -NoNewline
+        Write-File $configPath $newContent
         Write-OK
     } catch {
         Write-Fail $_
@@ -190,7 +197,7 @@ function Remove-KimiHooks {
     try {
         $content = Get-Content $configPath -Raw -Encoding UTF8
         $newContent = $content -replace 'hooks\s*=\s*\[[^\]]*\]', 'hooks = []'
-        Set-Content $configPath -Value $newContent -Encoding UTF8 -NoNewline
+        Write-File $configPath $newContent
         Write-OK
     } catch { Write-Skip }
 }
@@ -226,7 +233,7 @@ function Install-OpenCodeHooks {
     }
 
     $json = $hooksObj | ConvertTo-Json -Depth 6
-    Set-Content $configPath -Value $json -Encoding UTF8
+    Write-File $configPath $json
     Write-Host "  OK (UserPromptSubmit + Stop)" -ForegroundColor Green
 }
 
