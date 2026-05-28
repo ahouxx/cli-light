@@ -309,7 +309,10 @@ class CLILight:
             total = max(self._process_count, len(self._agents))
             red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
             orange_c = sum(1 for s in self._agents.values() if s == 'running')
-            green_c = sum(1 for s in self._agents.values() if s == 'done')
+            # Green = idle agents. Done-state agents from hooks PLUS any
+            # process-detected instances that haven't sent a hook yet (gap).
+            done_from_hooks = sum(1 for s in self._agents.values() if s == 'done')
+            green_c = max(done_from_hooks, total - red_c - orange_c)
 
         counts = {"total": total, "done": green_c, "running": orange_c,
                   "needs_input": red_c}
