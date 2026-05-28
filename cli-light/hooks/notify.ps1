@@ -25,7 +25,7 @@ for ($i = 0; $i -lt 5; $i++) {
     $ppid = Get-ParentProcessId $currentPid
     if ($ppid -eq 0) { break }
     $pname = (Get-Process -Id $ppid -ErrorAction SilentlyContinue).ProcessName
-    if ($pname -eq 'claude' -or $pname -eq 'opencode' -or $pname -eq 'kimi-cli') {
+    if ($pname -eq 'claude' -or $pname -eq 'opencode' -or $pname -eq 'kimi-cli' -or $pname -eq 'codex') {
         $agentId = "cli-$ppid"
         break
     }

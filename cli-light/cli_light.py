@@ -108,7 +108,7 @@ HOOK_PORT = 9876
 
 _SCAN_SCRIPT = (
     "$myPid=$PID;"
-    "(Get-Process -Name 'claude','opencode','kimi-cli' -ErrorAction SilentlyContinue|"
+    "(Get-Process -Name 'claude','opencode','kimi-cli','codex' -ErrorAction SilentlyContinue|"
     "Where-Object{$_.Id -ne $myPid}).Count"
 )
 

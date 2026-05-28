@@ -57,6 +57,7 @@ Run Claude Code / Kimi Code / OpenCode — the lights update automatically.
 | Claude Code | `claude.exe` | UserPromptSubmit / PermissionRequest / PostToolUse / Stop | Full |
 | Kimi Code | `kimi-cli.exe` | UserPromptSubmit / PreToolUse / PostToolUse / Stop | Full |
 | OpenCode | `opencode.exe` | UserPromptSubmit / Stop (native); full via `opencode-claude-hooks` plugin | Good |
+| Codex CLI | `codex.exe` | userPromptSubmitted / postToolUse / Stop | Good |
 
 ## Usage
 

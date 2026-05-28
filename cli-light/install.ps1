@@ -245,6 +245,57 @@ function Remove-OpenCodeHooks {
     Write-OK
 }
 
+# ── Codex CLI ───────────────────────────────────────────────
+function Install-CodexHooks {
+    Write-Step "[Codex CLI]  "
+    $configDir = "$env:USERPROFILE\.codex"
+    $configPath = Join-Path $configDir "hooks.json"
+
+    if (-not (Test-Path $configDir)) {
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    }
+
+    $hooksObj = @{
+        hooks = @{
+            userPromptSubmitted = @(
+                @{
+                    matcher = ""
+                    hooks = @(
+                        @{ type = "command"; command = "$CmdBase running" }
+                    )
+                }
+            )
+            postToolUse = @(
+                @{
+                    matcher = ""
+                    hooks = @(
+                        @{ type = "command"; command = "$CmdBase running" }
+                    )
+                }
+            )
+            Stop = @(
+                @{
+                    hooks = @(
+                        @{ type = "command"; command = "$CmdBase done" }
+                    )
+                }
+            )
+        }
+    }
+
+    $json = $hooksObj | ConvertTo-Json -Depth 6
+    Write-File $configPath $json
+    Write-Host "  OK (userPromptSubmitted + postToolUse + Stop)" -ForegroundColor Green
+}
+
+function Remove-CodexHooks {
+    Write-Step "[Codex CLI]  "
+    $configPath = "$env:USERPROFILE\.codex\hooks.json"
+    if (-not (Test-Path $configPath)) { Write-Skip; return }
+    Remove-Item $configPath -Force
+    Write-OK
+}
+
 # ── Generate launch.vbs ─────────────────────────────────────
 function New-LaunchVbs {
     $vbsPath = Join-Path $ScriptDir "launch.vbs"
@@ -427,6 +478,7 @@ try {
         Remove-ClaudeHooks
         Remove-KimiHooks
         Remove-OpenCodeHooks
+        Remove-CodexHooks
         Write-Host "`nCleaning up...`n"
         Write-Step "Shortcuts"
         Remove-Shortcuts
@@ -447,6 +499,7 @@ try {
         Install-ClaudeHooks
         Install-KimiHooks
         Install-OpenCodeHooks
+        Install-CodexHooks
         Write-Host "`nSetting up...`n"
         New-LaunchVbs
         New-UninstallBat

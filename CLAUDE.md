@@ -23,7 +23,7 @@ install.ps1           # 一键安装/卸载 hook（支持 Claude Code / Kimi Cod
 
 ## 核心机制
 
-1. **进程扫描**：每 3 秒 `Get-Process` 检测 `claude.exe` / `kimi-cli.exe` / `opencode.exe`
+1. **进程扫描**：每 3 秒 `Get-Process` 检测 `claude.exe` / `kimi-cli.exe` / `opencode.exe` / `codex.exe`
 2. **Hook 上报**：各 CLI 通过 hook 机制 POST 状态到 `localhost:9876/hook`，携带 `{agent, state}`
 3. **Per-agent 追踪**：`notify.ps1` 回溯进程树找到 CLI 进程 PID 作为 Agent ID，多实例互不干扰
 
