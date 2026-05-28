@@ -170,7 +170,7 @@ class CLILight:
         self.canvas = tk.Canvas(self.root, width=W, height=H,
                                 bg="#000000", highlightthickness=0)
         self.canvas.pack()
-        self._round_rect(0, 0, W, H, 10, fill=HOUSING, outline="#444",
+        self._round_rect(0, 0, W, H, 10, fill=HOUSING, outline="#333",
                          width=1, tags="static")
 
     def _round_rect(self, x1, y1, x2, y2, r, **kw):
@@ -223,12 +223,16 @@ class CLILight:
 
     # ── Menu ────────────────────────────────────────────
     def _build_menu(self):
-        self.menu = tk.Menu(self.root, tearoff=0, bg="#2a2a2a", fg="#fff",
+        self.menu = tk.Menu(self.root, tearoff=0, bg="#2a2a2a", fg="#ccc",
                             activebackground="#444", activeforeground="#fff",
-                            font=("Microsoft YaHei", 9))
+                            font=("Microsoft YaHei", 9),
+                            selectcolor="#555")
         self._topmost_var = tk.BooleanVar(value=True)
         self.menu.add_checkbutton(label="置顶显示", variable=self._topmost_var,
                                   command=self._toggle_topmost)
+        self._dividers_var = tk.BooleanVar(value=False)
+        self.menu.add_checkbutton(label="显示边框", variable=self._dividers_var,
+                                  command=self._update)
         self.menu.add_separator()
         self.menu.add_command(label="退出", command=self._quit)
 
@@ -327,6 +331,18 @@ class CLILight:
             else:
                 color = LENS_OFF
             self._draw_lens(key, color, count)
+
+        self._draw_dividers()
+
+    def _draw_dividers(self):
+        tag = "dividers"
+        self.canvas.delete(tag)
+        if not self._dividers_var.get():
+            return
+        # Vertical lines at midpoints between cx: 20, 54, 88, 122 → 37, 71, 105
+        for dx in (37, 71, 105):
+            self.canvas.create_line(dx, 6, dx, H - 6,
+                                    fill="#444", width=1, tags=tag)
 
     def _blink_tick(self):
         self.blink_on = not self.blink_on
