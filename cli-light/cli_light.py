@@ -292,6 +292,12 @@ class CLILight:
     def _drag_move(self, event):
         x = self.root.winfo_x() + event.x - self._drag_x
         y = self.root.winfo_y() + event.y - self._drag_y
+        # Keep at least 30px of the window visible on screen
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        cw = self.root.winfo_width()
+        ch = self.root.winfo_height()
+        x = max(-cw + 30, min(sw - 30, x))
+        y = max(-ch + 30, min(sh - 30, y))
         self.root.geometry(f"+{x}+{y}")
 
     def _snap_to_edge(self):
