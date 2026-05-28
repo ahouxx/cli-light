@@ -360,7 +360,7 @@ class CLILight:
         self._scale_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
                                    activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
                                    font=("Microsoft YaHei", 9))
-        for factor, label in [(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%")]:
+        for factor, label in [(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%"), (2.00, "200%"), (3.00, "300%")]:
             self._scale_menu.add_command(
                 label=self._menu_label(label, abs(self.scale - factor) < 0.01),
                 command=lambda f=factor: self._set_scale(f))
@@ -390,7 +390,7 @@ class CLILight:
         for i, key in enumerate(["dark", "transparent"]):
             self._theme_menu.entryconfigure(i, label=self._menu_label(
                 {"dark": "深色", "transparent": "透明"}[key], self.theme == key))
-        for i, (factor, label) in enumerate([(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%")]):
+        for i, (factor, label) in enumerate([(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%"), (2.00, "200%"), (3.00, "300%")]):
             self._scale_menu.entryconfigure(i, label=self._menu_label(label, abs(self.scale - factor) < 0.01))
         for i, name in enumerate(COLOR_SCHEMES):
             self._cs_menu.entryconfigure(i, label=self._menu_label(name, self.color_scheme == name))
