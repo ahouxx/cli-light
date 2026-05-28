@@ -258,7 +258,7 @@ class CLILight:
         """Clip window to rounded rectangle to eliminate black corners."""
         hwnd = self.root.winfo_id()
         w, h = self._scaled_wh()
-        r = self._scaled(8)[0] * 2  # corner ellipse diameter (radius × 2)
+        r = self._scaled(10)[0] * 2  # corner ellipse diameter (radius × 2)
         region = gdi32.CreateRoundRectRgn(0, 0, w + 1, h + 1, r, r)
         user32.SetWindowRgn(hwnd, region, True)
 
@@ -267,7 +267,7 @@ class CLILight:
         self.canvas.delete("static")
         self.canvas.config(bg=tc["canvas_bg"])
         w, h = self._scaled_wh()
-        r = self._scaled(8)[0]
+        r = self._scaled(10)[0]
         fill = tc["housing"]
         outline = "" if self.theme == "transparent" else tc["housing_outline"]
         self._round_rect(0, 0, w, h, r, fill=fill,
