@@ -108,14 +108,19 @@ HOOK_PORT = 9876
 
 _SCAN_SCRIPT = (
     "$myPid=$PID;"
-    "$all=Get-Process -Name 'claude','opencode','kimi-cli','codex' -ErrorAction SilentlyContinue|"
-    "Where-Object{$_.Id -ne $myPid};"
-    "$allIds=@{};$all|%{$allIds[$_.Id]=$true};"
-    "$roots=$all|Where-Object{"
-    "  $ppid=(Get-CimInstance Win32_Process -Filter \"ProcessId=$($_.Id)\" -ErrorAction SilentlyContinue).ParentProcessId;"
-    "  -not $allIds.ContainsKey($ppid)"
+    "$all=@(Get-Process -Name 'claude','opencode','kimi-cli','codex' -ErrorAction SilentlyContinue|"
+    "Where-Object{$_.Id -ne $myPid});"
+    "$n=$all.Count;"
+    "if($n -gt 1){"
+    "  $allIds=@{};$all|%{$allIds[$_.Id]=$true};"
+    "  $roots=$all|Where-Object{"
+    "    $ppid=0;"
+    "    try{$ppid=$_.Parent.Id}catch{try{$ppid=(Get-CimInstance Win32_Process -Filter \"ProcessId=$($_.Id)\" -ErrorAction Stop).ParentProcessId}catch{}};"
+    "    -not $allIds.ContainsKey($ppid)"
+    "  };"
+    "  if($roots.Count -gt 0){$n=$roots.Count;$all=$roots}"
     "};"
-    "\"$($roots.Count)|$($roots.Id -join ',')\""
+    "\"$n|$($all.Id -join ',')\""
 )
 
 
