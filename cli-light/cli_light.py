@@ -524,9 +524,9 @@ class CLILight:
 
     def _update(self):
         with self._agents_lock:
-            # Count hook-only agents (no standalone process, e.g. Kimi Code
-            # in VS Code). They share the "cli-unknown" agent ID.
-            hook_only = 1 if "cli-unknown" in self._agents else 0
+            # Count hook-only agents only when active (running or needs_input).
+            s = self._agents.get("cli-unknown", "")
+            hook_only = 1 if s in ("running", "needs_input") else 0
             total = self._process_count + hook_only
             red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
             orange_c = sum(1 for s in self._agents.values() if s == 'running')
