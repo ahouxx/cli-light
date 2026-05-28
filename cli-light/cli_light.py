@@ -39,7 +39,7 @@ GREEN_DIM  = "#003312"
 RED_DIM    = "#4A0808"
 BLUE_DIM   = "#0A1A33"
 
-W, H = 142, 44
+W, H = 142, 40
 LENS_R = 14
 SNAP_DIST = 25
 HOOK_PORT = 9876
@@ -95,10 +95,10 @@ class CLILight:
         self._running = True
 
         self.lights = {
-            "total":       {"cx": 20, "cy": 22, "r": LENS_R, "on": BLUE, "dim": BLUE_DIM},
-            "done":        {"cx": 54, "cy": 22, "r": LENS_R, "on": GREEN, "dim": GREEN_DIM},
-            "running":     {"cx": 88, "cy": 22, "r": LENS_R, "on": ORANGE, "dim": ORANGE_DIM},
-            "needs_input": {"cx": 122, "cy": 22, "r": LENS_R, "on": RED, "dim": RED_DIM},
+            "total":       {"cx": 20, "cy": 20, "r": LENS_R, "on": BLUE, "dim": BLUE_DIM},
+            "done":        {"cx": 54, "cy": 20, "r": LENS_R, "on": GREEN, "dim": GREEN_DIM},
+            "running":     {"cx": 88, "cy": 20, "r": LENS_R, "on": ORANGE, "dim": ORANGE_DIM},
+            "needs_input": {"cx": 122, "cy": 20, "r": LENS_R, "on": RED, "dim": RED_DIM},
         }
 
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
