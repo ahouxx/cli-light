@@ -26,17 +26,47 @@ HWND_TOPMOST, HWND_NOTOPMOST = -1, -2
 SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE = 0x0001, 0x0002, 0x0010
 GWL_EXSTYLE, WS_EX_TOPMOST = -20, 0x00000008
 
-# ── Theme colors ────────────────────────────────────────────
-# Lens "on" / "dim" colors are shared across themes
-GREEN  = "#009933"
-ORANGE = "#E06000"
-RED    = "#CC1111"
-BLUE   = "#2266CC"
-
-ORANGE_DIM = "#4A2000"
-GREEN_DIM  = "#003312"
-RED_DIM    = "#4A0808"
-BLUE_DIM   = "#0A1A33"
+# ── Lens color schemes ──────────────────────────────────────
+# Each scheme has 4 lights: total / done / running / needs_input
+# with "on" and "dim" (blink-off) colors.
+COLOR_SCHEMES = {
+    "默认": {
+        "total":       {"on": "#2266CC", "dim": "#0A1A33"},
+        "done":        {"on": "#009933", "dim": "#003312"},
+        "running":     {"on": "#E06000", "dim": "#4A2000"},
+        "needs_input": {"on": "#CC1111", "dim": "#4A0808"},
+    },
+    "海洋": {
+        "total":       {"on": "#0077B6", "dim": "#001D33"},
+        "done":        {"on": "#00B4D8", "dim": "#002233"},
+        "running":     {"on": "#48CAE4", "dim": "#0D2E38"},
+        "needs_input": {"on": "#E63946", "dim": "#3D0A0F"},
+    },
+    "森林": {
+        "total":       {"on": "#2D6A4F", "dim": "#0A1A14"},
+        "done":        {"on": "#52B788", "dim": "#123321"},
+        "running":     {"on": "#D4A373", "dim": "#3D2A14"},
+        "needs_input": {"on": "#E76F51", "dim": "#3D1A12"},
+    },
+    "霓虹": {
+        "total":       {"on": "#7C3AED", "dim": "#1E0A3D"},
+        "done":        {"on": "#06D6A0", "dim": "#003D28"},
+        "running":     {"on": "#FFD166", "dim": "#4A3800"},
+        "needs_input": {"on": "#FF6B6B", "dim": "#4A0808"},
+    },
+    "琥珀": {
+        "total":       {"on": "#8B5CF6", "dim": "#1E0A3D"},
+        "done":        {"on": "#10B981", "dim": "#003D1E"},
+        "running":     {"on": "#F59E0B", "dim": "#4A2E00"},
+        "needs_input": {"on": "#EF4444", "dim": "#4A0A0A"},
+    },
+    "极简": {
+        "total":       {"on": "#6B7280", "dim": "#1A1D22"},
+        "done":        {"on": "#9CA3AF", "dim": "#222528"},
+        "running":     {"on": "#D1D5DB", "dim": "#2D2F33"},
+        "needs_input": {"on": "#EF4444", "dim": "#4A0A0A"},
+    },
+}
 
 _TRANSCOLOR = "#010101"  # color key for transparent background
 
@@ -132,10 +162,10 @@ class CLILight:
         self._running = True
 
         self.lights = {
-            "total":       {"cx": 20, "cy": 20, "r": LENS_R, "on": BLUE, "dim": BLUE_DIM},
-            "done":        {"cx": 54, "cy": 20, "r": LENS_R, "on": GREEN, "dim": GREEN_DIM},
-            "running":     {"cx": 88, "cy": 20, "r": LENS_R, "on": ORANGE, "dim": ORANGE_DIM},
-            "needs_input": {"cx": 122, "cy": 20, "r": LENS_R, "on": RED, "dim": RED_DIM},
+            "total":       {"cx": 20, "cy": 20, "r": LENS_R},
+            "done":        {"cx": 54, "cy": 20, "r": LENS_R},
+            "running":     {"cx": 88, "cy": 20, "r": LENS_R},
+            "needs_input": {"cx": 122, "cy": 20, "r": LENS_R},
         }
 
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
@@ -143,6 +173,7 @@ class CLILight:
         self.topmost = saved.get("topmost", True)
         self.show_dividers = saved.get("dividers", False)
         self.theme = saved.get("theme", "dark")
+        self.color_scheme = saved.get("color_scheme", "默认")
         self.scale = saved.get("scale", 1.0)
         w, h = self._scaled_wh()
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -282,6 +313,10 @@ class CLILight:
     def _scaled_wh(self):
         return self._scaled(W, H)
 
+    def _lens_color(self, key, on):
+        cs = COLOR_SCHEMES[self.color_scheme][key]
+        return cs["on"] if on else cs["dim"]
+
     def _resolve_theme(self):
         if self.theme == "system":
             return _detect_system_theme()
@@ -313,11 +348,20 @@ class CLILight:
         self._scale_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
                                    activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
                                    font=("Microsoft YaHei", 9))
-        for factor, label in [(0.50, "50%"), (0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%")]:
+        for factor, label in [(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%")]:
             self._scale_menu.add_command(
                 label=self._menu_label(label, abs(self.scale - factor) < 0.01),
                 command=lambda f=factor: self._set_scale(f))
         self.menu.add_cascade(label="缩放", menu=self._scale_menu)
+        # Color scheme submenu
+        self._cs_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
+                                activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
+                                font=("Microsoft YaHei", 9))
+        for name in COLOR_SCHEMES:
+            self._cs_menu.add_command(
+                label=self._menu_label(name, self.color_scheme == name),
+                command=lambda n=name: self._set_color_scheme(n))
+        self.menu.add_cascade(label="配色", menu=self._cs_menu)
         self.menu.add_separator()
         self.menu.add_command(label="退出", command=self._quit)
 
@@ -334,8 +378,10 @@ class CLILight:
         for i, key in enumerate(["dark", "transparent"]):
             self._theme_menu.entryconfigure(i, label=self._menu_label(
                 {"dark": "深色", "transparent": "透明"}[key], self.theme == key))
-        for i, (factor, label) in enumerate([(0.50, "50%"), (0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%")]):
+        for i, (factor, label) in enumerate([(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%")]):
             self._scale_menu.entryconfigure(i, label=self._menu_label(label, abs(self.scale - factor) < 0.01))
+        for i, name in enumerate(COLOR_SCHEMES):
+            self._cs_menu.entryconfigure(i, label=self._menu_label(name, self.color_scheme == name))
 
     def _set_theme(self, theme):
         self.theme = theme
@@ -374,6 +420,12 @@ class CLILight:
         self.root.geometry(f"{w}x{h}+{x}+{y}")
         self.canvas.config(width=w, height=h)
         self._draw_housing()
+        self._refresh_menu()
+        self._update()
+        self._save_state()
+
+    def _set_color_scheme(self, name):
+        self.color_scheme = name
         self._refresh_menu()
         self._update()
         self._save_state()
@@ -468,10 +520,8 @@ class CLILight:
         for key, info in self.lights.items():
             count = counts[key]
             if count > 0:
-                if key == "running" and not self.blink_on:
-                    color = info["dim"]
-                else:
-                    color = info["on"]
+                is_dim = (key == "running" and not self.blink_on)
+                color = self._lens_color(key, not is_dim)
             else:
                 color = self._theme_colors()["lens_off"]
             self._draw_lens(key, color, count)
@@ -545,6 +595,7 @@ class CLILight:
                     'dividers': self.show_dividers,
                     'theme': self.theme,
                     'scale': self.scale,
+                    'color_scheme': self.color_scheme,
                 }, f)
         except Exception:
             pass
