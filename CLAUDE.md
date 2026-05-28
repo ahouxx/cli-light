@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-Windows 桌面置顶红绿灯，实时显示终端 CLI（Claude Code / Kimi Code / OpenCode）的运行状态。
+Windows 桌面置顶状态灯，实时显示终端 CLI（Claude Code / Kimi Code / OpenCode）的运行状态。
 
 - **蓝灯**：CLI 总数（进程检测）
 - **绿灯**：空闲

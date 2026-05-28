@@ -103,7 +103,7 @@ MIT — see [LICENSE](LICENSE)
 
 # CLI Light <sup>Windows</sup> · 桌面 CLI 状态红绿灯
 
-桌面置顶红绿灯，实时显示终端 AI 编程助手（Claude Code / Kimi Code / OpenCode）的运行状态。
+桌面置顶状态灯，实时显示终端 AI 编程助手（Claude Code / Kimi Code / OpenCode）的运行状态。
 
 ## 灯光说明
 
