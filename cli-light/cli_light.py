@@ -475,6 +475,10 @@ class CLILight:
                                 break
                             del self._agents[aid]
                             excess -= 1
+                # If no standalone processes remain, clear all agents including
+                # hook-only ones (stale after CLI exit).
+                if new_count == 0:
+                    self._agents.clear()
                 self._process_count = new_count
             for _ in range(30):
                 if not self._running:
