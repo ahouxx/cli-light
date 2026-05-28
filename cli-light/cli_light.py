@@ -110,18 +110,7 @@ _SCAN_SCRIPT = (
     "$myPid=$PID;"
     "$all=@(Get-Process -Name 'claude','opencode','kimi-cli','codex' -ErrorAction SilentlyContinue|"
     "Where-Object{$_.Id -ne $myPid});"
-    "$n=$all.Count;"
-    "if($n -gt 1){"
-    "  $allIds=@{};$all|%{$allIds[$_.Id]=$true};"
-    "  $roots=$all|Where-Object{"
-    "    $ppid=0;"
-    "    try{$ppid=$_.Parent.Id}catch{};"
-    "    if($ppid -eq 0){try{$ppid=(Get-CimInstance Win32_Process -Filter \"ProcessId=$($_.Id)\" -ErrorAction Stop).ParentProcessId}catch{}};"
-    "    if($ppid){-not $allIds.ContainsKey($ppid)}else{`$true}"
-    "  };"
-    "  if($roots.Count -gt 0){$n=$roots.Count;$all=$roots}"
-    "};"
-    "\"$n|$($all.Id -join ',')\""
+    "\"$($all.Count)|$($all.Id -join ',')\""
 )
 
 
@@ -479,16 +468,21 @@ class CLILight:
         while self._running:
             new_count, new_pids = self._scan_processes()
             with self._agents_lock:
-                # Remove agents whose processes no longer exist
-                for aid in list(self._agents):
-                    if aid == "cli-unknown":
-                        continue
-                    if aid not in new_pids:
-                        del self._agents[aid]
-                # If no standalone processes remain, clear hook-only too
+                changed = (new_count != self._process_count)
+                if new_count < self._process_count:
+                    # Process count dropped — remove stale agents by state priority
+                    excess = self._process_count - new_count
+                    for state in ('running', 'needs_input', 'done'):
+                        if excess <= 0:
+                            break
+                        for aid, st in list(self._agents.items()):
+                            if excess <= 0:
+                                break
+                            if st == state and aid != "cli-unknown":
+                                del self._agents[aid]
+                                excess -= 1
                 if new_count == 0:
                     self._agents.clear()
-                changed = (new_count != self._process_count)
                 self._process_count = new_count
                 if changed:
                     self.root.after(0, self._update)
