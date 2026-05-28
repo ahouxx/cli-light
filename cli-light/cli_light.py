@@ -45,16 +45,10 @@ SNAP_DIST = 25
 HOOK_PORT = 9876
 
 _SCAN_SCRIPT = (
-    "$p=$PID;"
-    "$c=(Get-Process -Name 'claude','opencode','kimi-cli' -ErrorAction SilentlyContinue|"
-    "Where-Object{$_.Id -ne $p}).Count;"
-    "$v=if(Get-Process -Name 'Code' -ErrorAction SilentlyContinue|Where-Object{`$_.MainWindowTitle -ne ''}){1}else{0};"
-    "\"$c,$v\""
+    "$myPid=$PID;"
+    "(Get-Process -Name 'claude','opencode','kimi-cli' -ErrorAction SilentlyContinue|"
+    "Where-Object{$_.Id -ne $myPid}).Count"
 )
-
-# CLI tools that run inside VS Code without a standalone process.
-# Key: config path to check, Value: label (unused, reserved for future)
-_VSCODE_CLIS = [".kimi" + os.sep + "config.toml"]
 
 
 class HookHandler(BaseHTTPRequestHandler):
@@ -261,7 +255,7 @@ class CLILight:
 
     # ── Process monitor ─────────────────────────────────
     def _scan_processes(self):
-        """Count CLI processes. Returns (proc_count, code_is_running)."""
+        """Count CLI processes via Get-Process (no temp files, no WMI)."""
         try:
             r = subprocess.run(
                 ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
@@ -269,20 +263,9 @@ class CLILight:
                 capture_output=True, text=True, timeout=5,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
-            parts = r.stdout.strip().split(',')
-            pc = int(parts[0] or 0)
-            vs = int(parts[1] or 0) > 0
+            return int(r.stdout.strip() or 0)
         except Exception:
-            pc = self._process_count
-            vs = False
-        # Add VS Code-hosted CLI tools (no standalone process)
-        n = pc
-        if vs:
-            home = os.path.expanduser("~")
-            for cfg in _VSCODE_CLIS:
-                if os.path.exists(os.path.join(home, cfg)):
-                    n += 1
-        return n
+            return self._process_count
 
     def _process_monitor(self):
         while self._running:
@@ -322,7 +305,10 @@ class CLILight:
 
     def _update(self):
         with self._agents_lock:
-            total = self._process_count
+            # Count hook-only agents (no standalone process, e.g. Kimi Code
+            # in VS Code). They share the "cli-unknown" agent ID.
+            hook_only = 1 if "cli-unknown" in self._agents else 0
+            total = self._process_count + hook_only
             red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
             orange_c = sum(1 for s in self._agents.values() if s == 'running')
             done_from_hooks = sum(1 for s in self._agents.values() if s == 'done')
