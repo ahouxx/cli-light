@@ -60,12 +60,6 @@ COLOR_SCHEMES = {
         "running":     {"on": "#F59E0B", "dim": "#4A2E00"},
         "needs_input": {"on": "#EF4444", "dim": "#4A0A0A"},
     },
-    "极简": {
-        "total":       {"on": "#6B7280", "dim": "#1A1D22"},
-        "done":        {"on": "#9CA3AF", "dim": "#222528"},
-        "running":     {"on": "#D1D5DB", "dim": "#2D2F33"},
-        "needs_input": {"on": "#EF4444", "dim": "#4A0A0A"},
-    },
 }
 
 _TRANSCOLOR = "#010101"  # color key for transparent background
