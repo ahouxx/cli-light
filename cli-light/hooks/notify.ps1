@@ -1,0 +1,41 @@
+param([string]$state)
+
+# Walk up process tree to find the real CLI process (claude.exe / opencode.exe / kimi-cli.exe)
+$agentId = "cli-unknown"
+$currentPid = $PID
+
+# Try Get-CimInstance first, fall back to Get-Process + WMI filter
+function Get-ParentProcessId {
+    param([int]$Pid)
+    try {
+        $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$Pid" -ErrorAction Stop
+        return $proc.ParentProcessId
+    } catch {
+        # Get-CimInstance may need admin; fall back to Get-Process
+        try {
+            $proc = Get-WmiObject Win32_Process -Filter "ProcessId=$Pid" -ErrorAction Stop
+            return $proc.ParentProcessId
+        } catch {
+            return 0
+        }
+    }
+}
+
+for ($i = 0; $i -lt 5; $i++) {
+    $ppid = Get-ParentProcessId $currentPid
+    if ($ppid -eq 0) { break }
+    $pname = (Get-Process -Id $ppid -ErrorAction SilentlyContinue).ProcessName
+    if ($pname -eq 'claude' -or $pname -eq 'opencode' -or $pname -eq 'kimi-cli') {
+        $agentId = "cli-$ppid"
+        break
+    }
+    $currentPid = $ppid
+}
+
+try {
+    $body = ConvertTo-Json -InputObject @{state=$state; agent=$agentId} -Compress
+    Invoke-WebRequest -Uri http://localhost:9876/hook -Method POST -Body $body `
+        -ContentType "application/json" -UseBasicParsing | Out-Null
+} catch {
+    exit 0
+}

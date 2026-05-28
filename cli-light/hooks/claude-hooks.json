@@ -1,0 +1,48 @@
+{
+  "description": "CLI Light hooks reference — use install.ps1 to auto-configure (recommended). The paths below MUST be updated to match your notify.ps1 location.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<path-to-cli-light>\\hooks\\notify.ps1\" running"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<path-to-cli-light>\\hooks\\notify.ps1\" needs_input"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<path-to-cli-light>\\hooks\\notify.ps1\" running"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<path-to-cli-light>\\hooks\\notify.ps1\" done"
+          }
+        ]
+      }
+    ]
+  }
+}
