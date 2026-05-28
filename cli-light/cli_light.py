@@ -26,9 +26,8 @@ HWND_TOPMOST, HWND_NOTOPMOST = -1, -2
 SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE = 0x0001, 0x0002, 0x0010
 GWL_EXSTYLE, WS_EX_TOPMOST = -20, 0x00000008
 
-HOUSING  = "#1a1a1a"
-LENS_OFF = "#303030"
-
+# ── Theme colors ────────────────────────────────────────────
+# Lens "on" / "dim" colors are shared across themes
 GREEN  = "#009933"
 ORANGE = "#E06000"
 RED    = "#CC1111"
@@ -38,6 +37,35 @@ ORANGE_DIM = "#4A2000"
 GREEN_DIM  = "#003312"
 RED_DIM    = "#4A0808"
 BLUE_DIM   = "#0A1A33"
+
+THEMES = {
+    "dark": {
+        "housing": "#1A1A1A", "lens_off": "#303030",
+        "canvas_bg": "#000000", "lens_outline": "#111",
+        "divider": "#FFF", "housing_outline": "#333",
+        "menu_bg": "#2A2A2A", "menu_fg": "#FFF",
+        "menu_abg": "#444", "menu_afg": "#FFF",
+        "num_fg": "#FFF",
+    },
+    "light": {
+        "housing": "#E8E8E8", "lens_off": "#D0D0D0",
+        "canvas_bg": "#F0F0F0", "lens_outline": "#CCC",
+        "divider": "#999", "housing_outline": "#BBB",
+        "menu_bg": "#F0F0F0", "menu_fg": "#222",
+        "menu_abg": "#DDD", "menu_afg": "#000",
+        "num_fg": "#FFF",
+    },
+}
+
+def _detect_system_theme():
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        v, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+        return "light" if v else "dark"
+    except Exception:
+        return "dark"
 
 W, H = 142, 40
 LENS_R = 14
@@ -82,7 +110,6 @@ class CLILight:
 
         self.root = tk.Tk()
         self.root.title("CLI Light")
-        self.root.configure(bg="#000000")
         self.root.overrideredirect(True)
 
         self._process_count = 0
@@ -105,6 +132,7 @@ class CLILight:
         x, y, saved = self._load_state(sw, sh)
         self.topmost = saved.get("topmost", True)
         self.show_dividers = saved.get("dividers", False)
+        self.theme = saved.get("theme", "dark")
         self.root.geometry(f"{W}x{H}+{x}+{y}")
 
         self._build_ui()
@@ -169,11 +197,18 @@ class CLILight:
 
     # ── UI ──────────────────────────────────────────────
     def _build_ui(self):
+        tc = self._theme_colors()
         self.canvas = tk.Canvas(self.root, width=W, height=H,
                                 bg="#000000", highlightthickness=0)
         self.canvas.pack()
-        self._round_rect(0, 0, W, H, 10, fill=HOUSING, outline="#333",
-                         width=1, tags="static")
+        self._draw_housing()
+
+    def _draw_housing(self):
+        tc = self._theme_colors()
+        self.canvas.delete("static")
+        self.canvas.config(bg=tc["canvas_bg"])
+        self._round_rect(0, 0, W, H, 10, fill=tc["housing"],
+                         outline=tc["housing_outline"], width=1, tags="static")
 
     def _round_rect(self, x1, y1, x2, y2, r, **kw):
         return self.canvas.create_polygon(
@@ -224,14 +259,33 @@ class CLILight:
             self.root.geometry(f"+{sx}+{sy}")
 
     # ── Menu ────────────────────────────────────────────
+    def _resolve_theme(self):
+        if self.theme == "system":
+            return _detect_system_theme()
+        return self.theme
+
+    def _theme_colors(self):
+        return THEMES[self._resolve_theme()]
+
     def _build_menu(self):
-        self.menu = tk.Menu(self.root, tearoff=0, bg="#2a2a2a", fg="#fff",
-                            activebackground="#444", activeforeground="#fff",
+        tc = self._theme_colors()
+        self.menu = tk.Menu(self.root, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
+                            activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
                             font=("Microsoft YaHei", 9))
         self.menu.add_command(label=self._menu_label("置顶显示", self.topmost),
                               command=self._toggle_topmost)
         self.menu.add_command(label=self._menu_label("显示边框", self.show_dividers),
                               command=self._toggle_dividers)
+        self.menu.add_separator()
+        # Theme submenu
+        self._theme_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
+                                   activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
+                                   font=("Microsoft YaHei", 9))
+        for key, label in [("dark", "深色"), ("light", "浅色"), ("system", "系统")]:
+            self._theme_menu.add_command(
+                label=self._menu_label(label, self.theme == key),
+                command=lambda k=key: self._set_theme(k))
+        self.menu.add_cascade(label="主题", menu=self._theme_menu)
         self.menu.add_separator()
         self.menu.add_command(label="退出", command=self._quit)
 
@@ -242,6 +296,24 @@ class CLILight:
     def _refresh_menu(self):
         self.menu.entryconfigure(0, label=self._menu_label("置顶显示", self.topmost))
         self.menu.entryconfigure(1, label=self._menu_label("显示边框", self.show_dividers))
+        tc = self._theme_colors()
+        self._theme_menu.config(bg=tc["menu_bg"], fg=tc["menu_fg"],
+                                activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"])
+        for i, key in enumerate(["dark", "light", "system"]):
+            self._theme_menu.entryconfigure(i, label=self._menu_label(
+                {"dark": "深色", "light": "浅色", "system": "系统"}[key], self.theme == key))
+
+    def _set_theme(self, theme):
+        self.theme = theme
+        self._refresh_menu()
+        self._rebuild_ui()
+        self._save_state()
+
+    def _rebuild_ui(self):
+        tc = self._theme_colors()
+        self.canvas.config(bg=tc["canvas_bg"])
+        self._draw_housing()
+        self._update()
 
     def _show_menu(self, event):
         self.menu.post(event.x_root, event.y_root)
@@ -315,11 +387,12 @@ class CLILight:
         cx, cy, r = info["cx"], info["cy"], info["r"]
         tag = f"lens_{key}"
         self.canvas.delete(tag)
+        tc = self._theme_colors()
         self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-                                fill=color, outline="#111", width=1, tags=tag)
+                                fill=color, outline=tc["lens_outline"], width=1, tags=tag)
         if number > 0:
             self.canvas.create_text(cx, cy, text=str(number),
-                                    fill="#fff", font=("Arial", 13, "bold"),
+                                    fill=tc["num_fg"], font=("Arial", 13, "bold"),
                                     tags=tag)
 
     def _update(self):
@@ -344,7 +417,7 @@ class CLILight:
                 else:
                     color = info["on"]
             else:
-                color = LENS_OFF
+                color = self._theme_colors()["lens_off"]
             self._draw_lens(key, color, count)
 
         self._draw_dividers()
@@ -359,7 +432,8 @@ class CLILight:
             info = self.lights[key]
             cx, cy = info["cx"], info["cy"]
             self._round_rect(cx - s, cy - s, cx + s, cy + s, 4,
-                             fill="", outline="#FFF", width=1, tags=tag)
+                             fill="", outline=self._theme_colors()["divider"],
+                             width=1, tags=tag)
 
     def _blink_tick(self):
         self.blink_on = not self.blink_on
@@ -401,6 +475,7 @@ class CLILight:
                     'y': self.root.winfo_y(),
                     'topmost': self.topmost,
                     'dividers': self.show_dividers,
+                    'theme': self.theme,
                 }, f)
         except Exception:
             pass
