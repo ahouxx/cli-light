@@ -108,9 +108,14 @@ HOOK_PORT = 9876
 
 _SCAN_SCRIPT = (
     "$myPid=$PID;"
-    "$procs=Get-Process -Name 'claude','opencode','kimi-cli','codex' -ErrorAction SilentlyContinue|"
+    "$all=Get-Process -Name 'claude','opencode','kimi-cli','codex' -ErrorAction SilentlyContinue|"
     "Where-Object{$_.Id -ne $myPid};"
-    "\"$($procs.Count)|$($procs.Id -join ',')\""
+    "$allIds=@{};$all|%{$allIds[$_.Id]=$true};"
+    "$roots=$all|Where-Object{"
+    "  $ppid=(Get-CimInstance Win32_Process -Filter \"ProcessId=$($_.Id)\" -ErrorAction SilentlyContinue).ParentProcessId;"
+    "  -not $allIds.ContainsKey($ppid)"
+    "};"
+    "\"$($roots.Count)|$($roots.Id -join ',')\""
 )
 
 
