@@ -307,7 +307,9 @@ class CLILight:
 
     def _update(self):
         with self._agents_lock:
-            total = self._process_count
+            # Process count + hook-only agents (e.g. VS Code extensions with no
+            # standalone process) — take max to avoid double-counting.
+            total = max(self._process_count, len(self._agents))
             red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
             orange_c = sum(1 for s in self._agents.values() if s == 'running')
             if red_c + orange_c > total:
