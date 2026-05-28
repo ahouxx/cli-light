@@ -143,7 +143,9 @@ class CLILight:
         self.topmost = saved.get("topmost", True)
         self.show_dividers = saved.get("dividers", False)
         self.theme = saved.get("theme", "dark")
-        self.root.geometry(f"{W}x{H}+{x}+{y}")
+        self.scale = saved.get("scale", 1.0)
+        w, h = self._scaled_wh()
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
         self._apply_transparent_mode()
 
         self._build_ui()
@@ -208,8 +210,8 @@ class CLILight:
 
     # ── UI ──────────────────────────────────────────────
     def _build_ui(self):
-        tc = self._theme_colors()
-        self.canvas = tk.Canvas(self.root, width=W, height=H,
+        w, h = self._scaled_wh()
+        self.canvas = tk.Canvas(self.root, width=w, height=h,
                                 bg="#000000", highlightthickness=0)
         self.canvas.pack()
         self._draw_housing()
@@ -218,9 +220,11 @@ class CLILight:
         tc = self._theme_colors()
         self.canvas.delete("static")
         self.canvas.config(bg=tc["canvas_bg"])
+        w, h = self._scaled_wh()
+        r = self._scaled(10)[0]
         fill = tc["housing"]
         outline = "" if self.theme == "transparent" else tc["housing_outline"]
-        self._round_rect(0, 0, W, H, 10, fill=fill,
+        self._round_rect(0, 0, w, h, r, fill=fill,
                          outline=outline, width=1, tags="static")
 
     def _round_rect(self, x1, y1, x2, y2, r, **kw):
@@ -260,8 +264,8 @@ class CLILight:
         self.snapped_edge = None
         if abs(x) < SNAP_DIST:
             sx = 0; self.snapped_edge = "left"
-        elif abs(x + W - sw) < SNAP_DIST:
-            sx = sw - W; self.snapped_edge = "right"
+        elif abs(x + cur_w - sw) < SNAP_DIST:
+            sx = sw - cur_w; self.snapped_edge = "right"
         if abs(y) < SNAP_DIST:
             sy = 0
             self.snapped_edge = f"{self.snapped_edge or ''}top".strip()
@@ -272,6 +276,12 @@ class CLILight:
             self.root.geometry(f"+{sx}+{sy}")
 
     # ── Menu ────────────────────────────────────────────
+    def _scaled(self, *vals):
+        return tuple(max(1, int(v * self.scale)) for v in vals)
+
+    def _scaled_wh(self):
+        return self._scaled(W, H)
+
     def _resolve_theme(self):
         if self.theme == "system":
             return _detect_system_theme()
@@ -299,6 +309,15 @@ class CLILight:
                 label=self._menu_label(label, self.theme == key),
                 command=lambda k=key: self._set_theme(k))
         self.menu.add_cascade(label="主题", menu=self._theme_menu)
+        # Scale submenu
+        self._scale_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
+                                   activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
+                                   font=("Microsoft YaHei", 9))
+        for factor, label in [(0.50, "50%"), (0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%")]:
+            self._scale_menu.add_command(
+                label=self._menu_label(label, abs(self.scale - factor) < 0.01),
+                command=lambda f=factor: self._set_scale(f))
+        self.menu.add_cascade(label="缩放", menu=self._scale_menu)
         self.menu.add_separator()
         self.menu.add_command(label="退出", command=self._quit)
 
@@ -315,6 +334,8 @@ class CLILight:
         for i, key in enumerate(["dark", "transparent"]):
             self._theme_menu.entryconfigure(i, label=self._menu_label(
                 {"dark": "深色", "transparent": "透明"}[key], self.theme == key))
+        for i, (factor, label) in enumerate([(0.50, "50%"), (0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%")]):
+            self._scale_menu.entryconfigure(i, label=self._menu_label(label, abs(self.scale - factor) < 0.01))
 
     def _set_theme(self, theme):
         self.theme = theme
@@ -344,6 +365,17 @@ class CLILight:
         self.topmost = not self.topmost
         self._apply_topmost()
         self._refresh_menu()
+        self._save_state()
+
+    def _set_scale(self, factor):
+        self.scale = factor
+        w, h = self._scaled_wh()
+        x, y = self.root.winfo_x(), self.root.winfo_y()
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.canvas.config(width=w, height=h)
+        self._draw_housing()
+        self._refresh_menu()
+        self._update()
         self._save_state()
 
     def _toggle_dividers(self):
@@ -406,15 +438,17 @@ class CLILight:
     # ── Rendering ───────────────────────────────────────
     def _draw_lens(self, key, color, number):
         info = self.lights[key]
-        cx, cy, r = info["cx"], info["cy"], info["r"]
+        cx, cy = self._scaled(info["cx"], info["cy"])
+        r = self._scaled(info["r"])[0]
         tag = f"lens_{key}"
         self.canvas.delete(tag)
         tc = self._theme_colors()
         self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
                                 fill=color, outline=tc["lens_outline"], width=1, tags=tag)
         if number > 0:
+            font_sz = max(8, self._scaled(13)[0])
             self.canvas.create_text(cx, cy, text=str(number),
-                                    fill=tc["num_fg"], font=("Arial", 13, "bold"),
+                                    fill=tc["num_fg"], font=("Arial", font_sz, "bold"),
                                     tags=tag)
 
     def _update(self):
@@ -449,11 +483,12 @@ class CLILight:
         self.canvas.delete(tag)
         if not self.show_dividers:
             return
-        s = 17
+        s = self._scaled(17)[0]
+        cr = self._scaled(4)[0]
         for key in ("total", "done", "running", "needs_input"):
             info = self.lights[key]
-            cx, cy = info["cx"], info["cy"]
-            self._round_rect(cx - s, cy - s, cx + s, cy + s, 4,
+            cx, cy = self._scaled(info["cx"], info["cy"])
+            self._round_rect(cx - s, cy - s, cx + s, cy + s, cr,
                              fill="", outline=self._theme_colors()["divider"],
                              width=1, tags=tag)
 
@@ -470,7 +505,18 @@ class CLILight:
 
     @classmethod
     def _load_state(cls, sw, sh):
-        dx, dy = sw - W - 20, 20
+        s = 1.0
+        try:
+            p = cls._get_state_path()
+            if os.path.exists(p):
+                with open(p, 'r') as f:
+                    d = json.load(f)
+                s = d.get("scale", 1.0)
+        except Exception:
+            pass
+        w = max(1, int(W * s))
+        h = max(1, int(H * s))
+        dx, dy = sw - w - 20, 20
         try:
             p = cls._get_state_path()
             if os.path.exists(p):
@@ -478,8 +524,8 @@ class CLILight:
                     d = json.load(f)
                 x = d.get('x', dx)
                 y = d.get('y', dy)
-                if x < -W + 30: x = -W + 30
-                if y < -H + 30: y = -H + 30
+                if x < -w + 30: x = -w + 30
+                if y < -h + 30: y = -h + 30
                 if x > sw - 30: x = sw - 30
                 if y > sh - 30: y = sh - 30
                 return x, y, d
@@ -498,6 +544,7 @@ class CLILight:
                     'topmost': self.topmost,
                     'dividers': self.show_dividers,
                     'theme': self.theme,
+                    'scale': self.scale,
                 }, f)
         except Exception:
             pass
