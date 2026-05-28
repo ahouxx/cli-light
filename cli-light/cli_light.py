@@ -258,7 +258,7 @@ class CLILight:
         """Clip window to rounded rectangle to eliminate black corners."""
         hwnd = self.root.winfo_id()
         w, h = self._scaled_wh()
-        r = self._scaled(10)[0] * 2  # corner diameter
+        r = self._scaled(8)[0] * 2  # corner ellipse diameter (radius × 2)
         region = gdi32.CreateRoundRectRgn(0, 0, w + 1, h + 1, r, r)
         user32.SetWindowRgn(hwnd, region, True)
 
@@ -267,7 +267,7 @@ class CLILight:
         self.canvas.delete("static")
         self.canvas.config(bg=tc["canvas_bg"])
         w, h = self._scaled_wh()
-        r = self._scaled(10)[0]
+        r = self._scaled(8)[0]
         fill = tc["housing"]
         outline = "" if self.theme == "transparent" else tc["housing_outline"]
         self._round_rect(0, 0, w, h, r, fill=fill,
@@ -563,13 +563,12 @@ class CLILight:
         if not self.show_dividers:
             return
         s = self._scaled(17)[0]
-        cr = self._scaled(4)[0]
         for key in ("total", "done", "running", "needs_input"):
             info = self.lights[key]
             cx, cy = self._scaled(info["cx"], info["cy"])
-            self._round_rect(cx - s, cy - s, cx + s, cy + s, cr,
-                             fill="", outline=self._theme_colors()["divider"],
-                             width=1, tags=tag)
+            self.canvas.create_rectangle(cx - s, cy - s, cx + s, cy + s,
+                                          outline=self._theme_colors()["divider"],
+                                          width=1, tags=tag)
 
     def _blink_tick(self):
         self.blink_on = not self.blink_on
