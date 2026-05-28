@@ -1,6 +1,6 @@
-# CLI Light
+# CLI Light <sup>Windows</sup>
 
-Desktop always-on-top traffic light that shows real-time status of your AI coding CLI tools (Claude Code, Kimi Code, OpenCode).
+Desktop always-on-top traffic light for Windows that shows real-time status of your AI coding CLI tools (Claude Code, Kimi Code, OpenCode, Codex).
 
 <p align="center">
   <em>Blue=total &nbsp; Green=idle &nbsp; Orange=running (blink) &nbsp; Red=needs approval</em>
@@ -101,7 +101,7 @@ Stop -> Green (done)
 MIT — see [LICENSE](LICENSE)
 
 
-# CLI Light · 桌面 CLI 状态红绿灯
+# CLI Light <sup>Windows</sup> · 桌面 CLI 状态红绿灯
 
 桌面置顶红绿灯，实时显示终端 AI 编程助手（Claude Code / Kimi Code / OpenCode）的运行状态。
 
