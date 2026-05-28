@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLI Light — Desktop Traffic Light for AI CLI Tools</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font:14px/1.6 -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif; }
+  .wrap { max-width:800px; margin:0 auto; padding:40px 20px; }
+  h1 { font-size:32px; margin-bottom:4px; }
+  h1 span { color:var(--muted); font-weight:400; font-size:20px; }
+  h2 { font-size:20px; margin:40px 0 16px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  h3 { font-size:16px; margin:20px 0 8px; }
+  p, li { color:var(--muted); }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  ul { padding-left:20px; }
+  li { margin:4px 0; }
+  code { background:#1c2333; padding:2px 6px; border-radius:4px; font-size:13px; }
+  pre { background:#0d1117; border:1px solid var(--border); border-radius:8px; padding:16px; overflow-x:auto; font-size:13px; line-height:1.5; }
+  .hero { text-align:center; padding:40px 0; }
+  .lights-demo { display:flex; justify-content:center; gap:24px; margin:24px 0; }
+  .light-dot { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:18px; font-weight:700; color:#fff; box-shadow:0 0 20px rgba(0,0,0,.3); }
+  .light-label { text-align:center; margin-top:8px; font-size:12px; color:var(--muted); }
+  .light-group { display:flex; flex-direction:column; align-items:center; }
+  .table { width:100%; border-collapse:collapse; margin:12px 0; }
+  .table th, .table td { padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); }
+  .table th { color:var(--text); font-weight:600; }
+  .scheme-row { display:flex; align-items:center; gap:16px; padding:12px 16px;
+    background:var(--card); border:1px solid var(--border); border-radius:8px; margin:8px 0; }
+  .scheme-name { min-width:60px; font-weight:600; }
+  .scheme-dots { display:flex; gap:10px; }
+  .scheme-dot { width:28px; height:28px; border-radius:50%; border:2px solid rgba(255,255,255,.1); }
+  .feature-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .feature { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; }
+  .feature h4 { font-size:14px; margin-bottom:4px; }
+  .feature p { font-size:13px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .badge-green { background:#033a16; color:#3fb950; }
+  .badge-blue { background:#041f3d; color:#58a6ff; }
+  .badge-orange { background:#3d1d00; color:#d29922; }
+  .badge-red { background:#3d0808; color:#f85149; }
+  .footer { text-align:center; margin-top:60px; padding:20px 0; color:var(--muted); font-size:12px;
+    border-top:1px solid var(--border); }
+  @media (max-width:600px) {
+    .feature-grid { grid-template-columns:1fr; }
+    .lights-demo { gap:12px; }
+    .light-dot { width:36px; height:36px; font-size:14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hero">
+  <h1>CLI Light <span>v0.1</span></h1>
+  <p style="font-size:18px;margin-top:8px;">桌面置顶红绿灯，实时显示 AI CLI 工具的运行状态</p>
+  <div class="lights-demo">
+    <div class="light-group">
+      <div class="light-dot" style="background:#2266CC">1</div>
+      <div class="light-label">总数</div>
+    </div>
+    <div class="light-group">
+      <div class="light-dot" style="background:#009933">1</div>
+      <div class="light-label">空闲</div>
+    </div>
+    <div class="light-group">
+      <div class="light-dot" style="background:#E06000">1</div>
+      <div class="light-label">运行中</div>
+    </div>
+    <div class="light-group">
+      <div class="light-dot" style="background:#CC1111">1</div>
+      <div class="light-label">需确认</div>
+    </div>
+  </div>
+  <p style="font-size:13px;color:var(--muted);">蓝 · 总数 &nbsp;|&nbsp; 绿 · 空闲 &nbsp;|&nbsp; 橙 · 运行中（闪烁） &nbsp;|&nbsp; 红 · 等待授权</p>
+</div>
+
+<h2>支持 CLI</h2>
+<table class="table">
+  <tr><th>CLI</th><th>进程</th><th>Hook 事件</th><th>状态</th></tr>
+  <tr><td>Claude Code</td><td><code>claude.exe</code></td><td>UserPromptSubmit / PermissionRequest / PostToolUse / Stop</td><td><span class="badge badge-green">完整</span></td></tr>
+  <tr><td>Kimi Code</td><td><code>kimi-cli.exe</code></td><td>UserPromptSubmit / PreToolUse / PostToolUse / Stop</td><td><span class="badge badge-green">完整</span></td></tr>
+  <tr><td>OpenCode</td><td><code>opencode.exe</code></td><td>UserPromptSubmit / Stop（原生）；完整支持需 opencode-claude-hooks 插件</td><td><span class="badge badge-blue">良好</span></td></tr>
+</table>
+
+<h2>配色方案</h2>
+<p>右键菜单可切换 5 种灯色方案，即时预览：</p>
+
+<div class="scheme-row">
+  <span class="scheme-name">默认</span>
+  <div class="scheme-dots">
+    <div class="scheme-dot" style="background:#2266CC"></div>
+    <div class="scheme-dot" style="background:#009933"></div>
+    <div class="scheme-dot" style="background:#E06000"></div>
+    <div class="scheme-dot" style="background:#CC1111"></div>
+  </div>
+  <span style="color:var(--muted);font-size:13px;">蓝 · 绿 · 橙 · 红</span>
+</div>
+
+<div class="scheme-row">
+  <span class="scheme-name">海洋</span>
+  <div class="scheme-dots">
+    <div class="scheme-dot" style="background:#0077B6"></div>
+    <div class="scheme-dot" style="background:#00B4D8"></div>
+    <div class="scheme-dot" style="background:#48CAE4"></div>
+    <div class="scheme-dot" style="background:#E63946"></div>
+  </div>
+  <span style="color:var(--muted);font-size:13px;">深海蓝 · 湖蓝 · 亮青 · 珊瑚红</span>
+</div>
+
+<div class="scheme-row">
+  <span class="scheme-name">森林</span>
+  <div class="scheme-dots">
+    <div class="scheme-dot" style="background:#2D6A4F"></div>
+    <div class="scheme-dot" style="background:#52B788"></div>
+    <div class="scheme-dot" style="background:#D4A373"></div>
+    <div class="scheme-dot" style="background:#E76F51"></div>
+  </div>
+  <span style="color:var(--muted);font-size:13px;">松绿 · 薄荷绿 · 暖沙金 · 朱砂橙</span>
+</div>
+
+<div class="scheme-row">
+  <span class="scheme-name">霓虹</span>
+  <div class="scheme-dots">
+    <div class="scheme-dot" style="background:#7C3AED"></div>
+    <div class="scheme-dot" style="background:#06D6A0"></div>
+    <div class="scheme-dot" style="background:#FFD166"></div>
+    <div class="scheme-dot" style="background:#FF6B6B"></div>
+  </div>
+  <span style="color:var(--muted);font-size:13px;">深紫 · 荧光绿 · 亮金 · 粉红</span>
+</div>
+
+<div class="scheme-row">
+  <span class="scheme-name">琥珀</span>
+  <div class="scheme-dots">
+    <div class="scheme-dot" style="background:#8B5CF6"></div>
+    <div class="scheme-dot" style="background:#10B981"></div>
+    <div class="scheme-dot" style="background:#F59E0B"></div>
+    <div class="scheme-dot" style="background:#EF4444"></div>
+  </div>
+  <span style="color:var(--muted);font-size:13px;">紫罗兰 · 翠绿 · 琥珀金 · 正红</span>
+</div>
+
+<h2>功能一览</h2>
+<div class="feature-grid">
+  <div class="feature">
+    <h4>进程自动检测</h4>
+    <p>每 3 秒扫描 <code>claude.exe</code> / <code>kimi-cli.exe</code> / <code>opencode.exe</code>，实时统计运行实例数</p>
+  </div>
+  <div class="feature">
+    <h4>Hook 状态上报</h4>
+    <p>通过各 CLI 原生 Hook 机制，任务状态实时推送到指示灯</p>
+  </div>
+  <div class="feature">
+    <h4>一键安装</h4>
+    <p><code>install.ps1</code> 自动配置 Claude Code / Kimi Code / OpenCode 的 Hook，生成桌面快捷方式</p>
+  </div>
+  <div class="feature">
+    <h4>多实例追踪</h4>
+    <p>以进程 PID 区分 Agent，多个 CLI 实例互不干扰</p>
+  </div>
+  <div class="feature">
+    <h4>拖拽 + 吸附</h4>
+    <p>自由拖拽窗口到任意位置，靠近屏幕边缘自动吸附</p>
+  </div>
+  <div class="feature">
+    <h4>位置记忆</h4>
+    <p>退出时记住窗口位置和所有设置，重启后自动恢复</p>
+  </div>
+  <div class="feature">
+    <h4>深色 / 透明主题</h4>
+    <p>右键切换：深色经典风格 或 背景完全透明仅显示灯和边框</p>
+  </div>
+  <div class="feature">
+    <h4>5 种配色方案</h4>
+    <p>默认 / 海洋 / 森林 / 霓虹 / 琥珀，即时切换灯色</p>
+  </div>
+  <div class="feature">
+    <h4>四档缩放</h4>
+    <p>75% / 100% / 125% / 150%，灯、文字、边框等比缩放</p>
+  </div>
+  <div class="feature">
+    <h4>显示边框</h4>
+    <p>可选在每个灯周围显示方形边框，视觉更清晰</p>
+  </div>
+  <div class="feature">
+    <h4>重复启动保护</h4>
+    <p>检测到已有实例运行时弹窗询问，可选择启动新实例或取消</p>
+  </div>
+  <div class="feature">
+    <h4>干净卸载</h4>
+    <p><code>install.ps1 -Uninstall</code> 一键移除 Hook、快捷方式、进程和状态文件</p>
+  </div>
+</div>
+
+<h2>安装</h2>
+<pre><code># 1. 启动指示灯
+pythonw cli_light.py
+
+# 2. 安装 Hook（一次性）
+powershell -ExecutionPolicy Bypass -File install.ps1
+
+# 3. 重启 CLI 终端，开始使用</code></pre>
+
+<h2>Hook 生命周期</h2>
+<pre><code>UserPromptSubmit ──→ 🟠 橙灯（running）
+     │
+     ▼ 需要授权
+PermissionRequest ──→ 🔴 红灯（needs_input）
+     │
+     ▼ 授权通过
+PostToolUse ──→ 🟠 橙灯（running）
+     │
+     ▼ 任务完成
+Stop ──→ 🟢 绿灯（done）</code></pre>
+
+<h2>操作</h2>
+<ul>
+  <li><strong>拖拽</strong> —— 移动窗口</li>
+  <li><strong>双击</strong> —— 紧急关闭</li>
+  <li><strong>右键</strong> —— 菜单：置顶 / 显示边框 / 主题 / 配色 / 缩放 / 退出</li>
+  <li><strong>边缘吸附</strong> —— 拖到屏幕边缘自动对齐</li>
+</ul>
+
+<h2>环境要求</h2>
+<ul>
+  <li>Windows 10 / 11</li>
+  <li>Python 3.10+（纯标准库，零外部依赖）</li>
+</ul>
+
+<div class="footer">
+  CLI Light · MIT License · <a href="https://github.com">GitHub</a>
+</div>
+
+</div>
+</body>
+</html>
