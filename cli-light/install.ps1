@@ -315,6 +315,22 @@ function Remove-DesktopShortcut {
     }
 }
 
+# ── Kill running instances ──────────────────────────────────
+function Stop-CliLight {
+    Write-Step "Running processes"
+    $killed = $false
+    Get-Process python -ErrorAction SilentlyContinue | ForEach-Object {
+        try {
+            $cmdline = (Get-CimInstance Win32_Process -Filter "ProcessId=$($_.Id)").CommandLine
+            if ($cmdline -like '*cli_light*') {
+                Stop-Process -Id $_.Id -Force
+                $killed = $true
+            }
+        } catch {}
+    }
+    if ($killed) { Write-OK } else { Write-Skip }
+}
+
 # ── Main ────────────────────────────────────────────────────
 try {
     if ($Uninstall) {
@@ -325,6 +341,8 @@ try {
         Write-Host ""
         Write-Step "Desktop shortcut"
         Remove-DesktopShortcut
+        Write-Step "Running processes"
+        Stop-CliLight
     } else {
         Write-Host "`nInstalling hooks...`n"
         Install-ClaudeHooks
