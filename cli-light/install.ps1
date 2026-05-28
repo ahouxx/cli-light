@@ -1,8 +1,8 @@
 # CLI Light — Hook installer for Claude Code / Kimi Code / OpenCode
 # Install:   powershell -ExecutionPolicy Bypass -File install.ps1
-# Uninstall: powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall
-# Skip desktop shortcut: powershell -ExecutionPolicy Bypass -File install.ps1 -NoDesktop
-param([switch]$Uninstall, [switch]$NoDesktop)
+# Uninstall: powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall [-Force]
+# Skip desktop: powershell -ExecutionPolicy Bypass -File install.ps1 -NoDesktop
+param([switch]$Uninstall, [switch]$NoDesktop, [switch]$Force)
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -302,38 +302,59 @@ function _New-Shortcut {
 }
 
 function Add-Shortcuts {
+    param([switch]$NoDesktop)
     $vbsPath = Join-Path $ScriptDir "launch.vbs"
     $ps1Path = Join-Path $ScriptDir "install.ps1"
     $startMenu = [Environment]::GetFolderPath('Programs')
     $smDir = Join-Path $startMenu "CLI Light"
 
-    # Ensure clean Start Menu folder
     if (Test-Path $smDir) { Remove-Item "$smDir\*" -Force -ErrorAction SilentlyContinue }
     else { New-Item -ItemType Directory -Path $smDir -Force | Out-Null }
 
-    # Start Menu: launch
     _New-Shortcut (Join-Path $smDir "CLI Light.lnk") $vbsPath -WorkingDir $ScriptDir -Description "CLI Light"
-    # Start Menu: uninstall
     _New-Shortcut (Join-Path $smDir "Uninstall CLI Light.lnk") "powershell.exe" `
         -Arguments "-NoProfile -ExecutionPolicy Bypass -File `"$ps1Path`" -Uninstall" `
         -WorkingDir $ScriptDir -Description "Uninstall CLI Light"
 
-    # Desktop
-    $desktopDir = [Environment]::GetFolderPath('Desktop')
-    _New-Shortcut (Join-Path $desktopDir "CLI Light.lnk") $vbsPath -WorkingDir $ScriptDir -Description "CLI Light"
+    if (-not $NoDesktop) {
+        $desktopDir = [Environment]::GetFolderPath('Desktop')
+        _New-Shortcut (Join-Path $desktopDir "CLI Light.lnk") $vbsPath -WorkingDir $ScriptDir -Description "CLI Light"
+    }
 
-    Write-Host "  OK (Desktop + Start Menu)" -ForegroundColor Green
+    $where = if ($NoDesktop) { "Start Menu" } else { "Desktop + Start Menu" }
+    Write-Host "  OK ($where)" -ForegroundColor Green
 }
 
 function Remove-Shortcuts {
+    $removed = $false
     $desktopDir = [Environment]::GetFolderPath('Desktop')
     $desktopLink = Join-Path $desktopDir "CLI Light.lnk"
-    if (Test-Path $desktopLink) { Remove-Item $desktopLink -Force }
+    if (Test-Path $desktopLink) { Remove-Item $desktopLink -Force; $removed = $true }
 
     $startMenu = [Environment]::GetFolderPath('Programs')
     $smDir = Join-Path $startMenu "CLI Light"
-    if (Test-Path $smDir) { Remove-Item $smDir -Recurse -Force; Write-OK }
-    else { Write-Skip }
+    if (Test-Path $smDir) { Remove-Item $smDir -Recurse -Force; $removed = $true }
+
+    if ($removed) { Write-OK } else { Write-Skip }
+}
+
+# ── State files cleanup ──────────────────────────────────────
+function Remove-StateFiles {
+    $stateDir = Join-Path $env:USERPROFILE ".cli-light"
+    if (Test-Path $stateDir) {
+        Remove-Item $stateDir -Recurse -Force
+        Write-OK
+    } else {
+        Write-Skip
+    }
+}
+
+# ── Generated files cleanup ──────────────────────────────────
+function Remove-GeneratedFiles {
+    $removed = $false
+    $launchVbs = Join-Path $ScriptDir "launch.vbs"
+    if (Test-Path $launchVbs) { Remove-Item $launchVbs -Force; $removed = $true }
+    if ($removed) { Write-OK } else { Write-Skip }
 }
 
 # ── Uninstall batch script ───────────────────────────────────
@@ -368,34 +389,70 @@ function Stop-CliLight {
     }
 }
 
+# ── Check Python availability ────────────────────────────────
+function Test-Python {
+    try {
+        $null = Get-Command python -ErrorAction Stop
+        return $true
+    } catch {
+        try {
+            $null = Get-Command python3 -ErrorAction Stop
+            return $true
+        } catch {
+            return $false
+        }
+    }
+}
+
 # ── Main ────────────────────────────────────────────────────
 try {
     if ($Uninstall) {
+        if (-not $Force) {
+            Write-Host "`nThis will remove all CLI Light hooks, shortcuts, and state files.`n" -ForegroundColor Yellow
+            $confirm = Read-Host "  Continue? (y/N)"
+            if ($confirm -notmatch '^[yY]') {
+                Write-Host "  Cancelled."
+                exit 0
+            }
+        }
+        Write-Host ""
         Write-Host "`nRemoving hooks...`n"
         Remove-ClaudeHooks
         Remove-KimiHooks
         Remove-OpenCodeHooks
-        Write-Host ""
+        Write-Host "`nCleaning up...`n"
         Write-Step "Shortcuts"
         Remove-Shortcuts
+        Write-Step "State files"
+        Remove-StateFiles
+        Write-Step "Generated files"
+        Remove-GeneratedFiles
         Write-Step "Processes"
         Stop-CliLight
+        Write-Host ""
+        Write-Host "CLI Light has been uninstalled. The project folder is kept — delete it manually if desired." -ForegroundColor Green
     } else {
+        if (-not (Test-Python)) {
+            Write-Host "Python not found in PATH. Please install Python 3.10+ first." -ForegroundColor Red
+            exit 1
+        }
         Write-Host "`nInstalling hooks...`n"
         Install-ClaudeHooks
         Install-KimiHooks
         Install-OpenCodeHooks
-        Write-Host ""
+        Write-Host "`nSetting up...`n"
         New-LaunchVbs
         New-UninstallBat
-        if (-not $NoDesktop) {
-            Write-Step "Shortcuts"
+        Write-Step "Shortcuts"
+        if ($NoDesktop) {
+            Add-Shortcuts -NoDesktop
+        } else {
             Add-Shortcuts
         }
+        Write-Host ""
+        Write-Host "Done. Restart your CLI tools for changes to take effect." -ForegroundColor Green
     }
 } catch {
     Write-Host "`nError: $_" -ForegroundColor Red
     exit 1
 }
-
-Write-Host "`nDone. Restart your CLI tools for changes to take effect.`n"
