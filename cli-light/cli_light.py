@@ -277,7 +277,7 @@ class CLILight:
                         if excess <= 0:
                             break
                         to_remove = [aid for aid, st in self._agents.items()
-                                     if st == state]
+                                     if st == state and aid != "cli-unknown"]
                         for aid in to_remove:
                             if excess <= 0:
                                 break
@@ -304,13 +304,12 @@ class CLILight:
 
     def _update(self):
         with self._agents_lock:
-            # Total = max of process count and all known hook agents (including
-            # hook-only agents like VS Code extensions without standalone process).
-            total = max(self._process_count, len(self._agents))
+            # Base count from process scan. Add hook-only agents (those with
+            # no matching process, e.g. Kimi Code in VS Code extension host).
+            hook_only = 1 if any(aid == "cli-unknown" for aid in self._agents) else 0
+            total = self._process_count + hook_only
             red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
             orange_c = sum(1 for s in self._agents.values() if s == 'running')
-            # Green = idle agents. Done-state agents from hooks PLUS any
-            # process-detected instances that haven't sent a hook yet (gap).
             done_from_hooks = sum(1 for s in self._agents.values() if s == 'done')
             green_c = max(done_from_hooks, total - red_c - orange_c)
 
