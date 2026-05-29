@@ -6,9 +6,9 @@ $currentPid = $PID
 
 # Try Get-CimInstance first, fall back to Get-Process + WMI filter
 function Get-ParentProcessId {
-    param([int]$Pid)
+    param([int]$ProcessId)
     try {
-        $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$Pid" -ErrorAction Stop
+        $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction Stop
         return $proc.ParentProcessId
     } catch {
         # Get-CimInstance may need admin; fall back to Get-Process
