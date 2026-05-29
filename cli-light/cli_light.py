@@ -143,9 +143,8 @@ def _detect_system_theme():
     except Exception:
         return "dark"
 
-W, H = 142, 40
+W, H = 138, 36
 LENS_R = 14
-SNAP_DIST = 25
 HOOK_PORT = 9876
 
 _SCAN_SCRIPT = (
@@ -194,22 +193,22 @@ class CLILight:
         self._agents_lock = threading.Lock()
         self.blink_on = True
         self.topmost = True
-        self.snapped_edge = None
         self._drag_x = self._drag_y = 0
         self._running = True
 
         self._lights_h = {
-            "total":       {"cx": 20, "cy": 20, "r": LENS_R},
-            "done":        {"cx": 54, "cy": 20, "r": LENS_R},
-            "running":     {"cx": 88, "cy": 20, "r": LENS_R},
-            "needs_input": {"cx": 122, "cy": 20, "r": LENS_R},
+            "total":       {"cx": 18, "cy": 18, "r": LENS_R},
+            "done":        {"cx": 52, "cy": 18, "r": LENS_R},
+            "running":     {"cx": 86, "cy": 18, "r": LENS_R},
+            "needs_input": {"cx": 120, "cy": 18, "r": LENS_R},
         }
         self._lights_v = {
-            "total":       {"cx": 20, "cy": 20, "r": LENS_R},
-            "done":        {"cx": 20, "cy": 54, "r": LENS_R},
-            "running":     {"cx": 20, "cy": 88, "r": LENS_R},
-            "needs_input": {"cx": 20, "cy": 122, "r": LENS_R},
+            "total":       {"cx": 18, "cy": 18, "r": LENS_R},
+            "done":        {"cx": 18, "cy": 52, "r": LENS_R},
+            "running":     {"cx": 18, "cy": 86, "r": LENS_R},
+            "needs_input": {"cx": 18, "cy": 120, "r": LENS_R},
         }
+        self._light_keys = list(self._lights_h.keys())
 
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
         x, y, saved = self._load_state(sw, sh)
@@ -389,11 +388,9 @@ class CLILight:
 
     def _drag_start(self, event):
         self._drag_x, self._drag_y = event.x, event.y
-        self.snapped_edge = None
 
     def _drag_stop(self, event):
         self._drag_x = self._drag_y = 0
-        self._snap_to_edge()
         self._save_state()
 
     def _drag_move(self, event):
@@ -406,26 +403,6 @@ class CLILight:
         x = max(0, min(sw - cw, x))
         y = max(0, min(sh - ch, y))
         self.root.geometry(f"+{x}+{y}")
-
-    def _snap_to_edge(self):
-        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        x, y = self.root.winfo_x(), self.root.winfo_y()
-        cw = self.root.winfo_width()
-        ch = self.root.winfo_height()
-        sx, sy = x, y
-        self.snapped_edge = None
-        if abs(x) < SNAP_DIST:
-            sx = 0; self.snapped_edge = "left"
-        elif abs(x + cw - sw) < SNAP_DIST:
-            sx = sw - cw; self.snapped_edge = "right"
-        if abs(y) < SNAP_DIST:
-            sy = 0
-            self.snapped_edge = f"{self.snapped_edge or ''}top".strip()
-        elif abs(y + ch - sh) < SNAP_DIST:
-            sy = sh - ch
-            self.snapped_edge = f"{self.snapped_edge or ''}bottom".strip()
-        if sx != x or sy != y:
-            self.root.geometry(f"+{sx}+{sy}")
 
     # ── Menu ────────────────────────────────────────────
     def _scaled(self, *vals):
@@ -462,7 +439,7 @@ class CLILight:
         self._theme_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
                                    activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
                                    font=("Microsoft YaHei", 9))
-        for key, label in [("dark", "深色"), ("transparent", "透明")]:
+        for key, label in [("dark", "深色"), ("light", "浅色"), ("transparent", "透明"), ("system", "跟随系统")]:
             self._theme_menu.add_command(
                 label=self._menu_label(label, self.theme == key),
                 command=lambda k=key: self._set_theme(k))
@@ -471,7 +448,7 @@ class CLILight:
         self._scale_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
                                    activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
                                    font=("Microsoft YaHei", 9))
-        for factor, label in [(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%"), (2.00, "200%"), (3.00, "300%"), (5.00, "500%"), (10.00, "1000%")]:
+        for factor, label in [(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%"), (2.00, "200%"), (3.00, "300%"), (5.00, "500%")]:
             self._scale_menu.add_command(
                 label=self._menu_label(label, abs(self.scale - factor) < 0.01),
                 command=lambda f=factor: self._set_scale(f))
@@ -507,10 +484,10 @@ class CLILight:
         tc = self._theme_colors()
         self._theme_menu.config(bg=tc["menu_bg"], fg=tc["menu_fg"],
                                 activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"])
-        for i, key in enumerate(["dark", "transparent"]):
+        for i, key in enumerate(["dark", "light", "transparent", "system"]):
             self._theme_menu.entryconfigure(i, label=self._menu_label(
-                {"dark": "深色", "transparent": "透明"}[key], self.theme == key))
-        for i, (factor, label) in enumerate([(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%"), (2.00, "200%"), (3.00, "300%"), (5.00, "500%"), (10.00, "1000%")]):
+                {"dark": "深色", "light": "浅色", "transparent": "透明", "system": "跟随系统"}[key], self.theme == key))
+        for i, (factor, label) in enumerate([(0.75, "75%"), (1.00, "100%"), (1.25, "125%"), (1.50, "150%"), (2.00, "200%"), (3.00, "300%"), (5.00, "500%")]):
             self._scale_menu.entryconfigure(i, label=self._menu_label(label, abs(self.scale - factor) < 0.01))
         for i, name in enumerate(COLOR_SCHEMES):
             self._cs_menu.entryconfigure(i, label=self._menu_label(name, self.color_scheme == name))
@@ -628,6 +605,9 @@ class CLILight:
                             if aid != "cli-unknown" and aid not in live_pids]
                     for aid in dead:
                         del self._agents[aid]
+                elif new_count == 0:
+                    # All CLI processes exited — clear all agent states
+                    self._agents.clear()
                 self._process_count = new_count
             for _ in range(30):
                 if not self._running:
@@ -645,7 +625,9 @@ class CLILight:
         self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
                                 fill=color, outline=tc["lens_outline"], width=1, tags=tag)
         if number > 0:
-            font_sz = max(8, self._scaled(13)[0])
+            digits = len(str(number))
+            base_sz = 13 if digits < 3 else 10
+            font_sz = max(7, self._scaled(base_sz)[0])
             self.canvas.create_text(cx, cy, text=str(number),
                                     fill=tc["num_fg"], font=("Arial", font_sz, "bold"),
                                     tags=tag)
@@ -681,7 +663,7 @@ class CLILight:
         if not self.show_dividers:
             return
         s = self._scaled(17)[0]
-        for key in ("total", "done", "running", "needs_input"):
+        for key in self._light_keys:
             info = self.lights[key]
             cx, cy = self._scaled(info["cx"], info["cy"])
             self.canvas.create_rectangle(cx - s, cy - s, cx + s, cy + s,

@@ -48,8 +48,13 @@
   .badge-red { background:#3d0808; color:#f85149; }
   .footer { text-align:center; margin-top:60px; padding:20px 0; color:var(--muted); font-size:12px;
     border-top:1px solid var(--border); }
+  .showcase-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; }
+  .showcase-item { background:var(--card); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .showcase-item img { width:100%; display:block; }
+  .showcase-item p { padding:10px 14px; font-size:13px; color:var(--muted); margin:0; }
   @media (max-width:600px) {
     .feature-grid { grid-template-columns:1fr; }
+    .showcase-grid { grid-template-columns:1fr; }
     .lights-demo { gap:12px; }
     .light-dot { width:36px; height:36px; font-size:14px; }
   }
@@ -79,25 +84,38 @@
       <div class="light-label">需确认</div>
     </div>
   </div>
-  <p style="font-size:13px;color:var(--muted);">蓝 · 总数 &nbsp;|&nbsp; 绿 · 空闲 &nbsp;|&nbsp; 橙 · 运行中（闪烁） &nbsp;|&nbsp; 红 · 等待授权 &nbsp;|&nbsp; <span id="clock"></span></p>
-  <script>
-    function updateClock() {
-      var el = document.getElementById('clock');
-      if (el) el.textContent = new Date().toLocaleTimeString('zh-CN', {hour12: false});
-    }
-    updateClock();
-    setInterval(updateClock, 1000);
-  </script>
+  <p style="font-size:13px;color:var(--muted);">蓝 · 总数 &nbsp;|&nbsp; 绿 · 空闲 &nbsp;|&nbsp; 橙 · 运行中（闪烁） &nbsp;|&nbsp; 红 · 等待授权</p>
+</div>
+
+<h2>效果展示</h2>
+<div class="showcase-grid">
+  <div class="showcase-item">
+    <img src="screenshots/vscode.png" alt="与 VS Code 融为一体" loading="lazy">
+    <p>他甚至能跟你的 VS Code 融为一体</p>
+  </div>
+  <div class="showcase-item">
+    <img src="screenshots/customize.png" alt="自定义样式" loading="lazy">
+    <p>随意拖动到任何位置，深色或透明主题，横着或竖着，始终保持在最前端</p>
+  </div>
+  <div class="showcase-item">
+    <img src="screenshots/large.png" alt="放大显示" loading="lazy">
+    <p>也可以让他跟地瓜那么大 — 为了让你老板路过时一眼就知道你没在偷懒</p>
+  </div>
+  <div class="showcase-item">
+    <img src="screenshots/small.png" alt="缩小显示" loading="lazy">
+    <p>可以小到当托盘指示灯</p>
+  </div>
 </div>
 
 <h2>支持 CLI</h2>
 <table class="table">
   <tr><th>CLI</th><th>进程</th><th>Hook 事件</th><th>状态</th></tr>
-  <tr><td>Claude Code</td><td><code>claude.exe</code></td><td>UserPromptSubmit / PermissionRequest / PostToolUse / Stop</td><td><span class="badge badge-green">完整</span></td></tr>
-  <tr><td>Kimi Code</td><td><code>kimi-cli.exe</code></td><td>UserPromptSubmit / PreToolUse / PostToolUse / Stop</td><td><span class="badge badge-green">完整</span></td></tr>
-  <tr><td>OpenCode</td><td><code>opencode.exe</code></td><td>UserPromptSubmit / Stop（原生）；完整支持需 opencode-claude-hooks 插件</td><td><span class="badge badge-blue">良好</span></td></tr>
-  <tr><td>Codex CLI</td><td><code>codex.exe</code></td><td>UserPromptSubmit / PermissionRequest / PostToolUse / Stop · 需启用 <code>[features] hooks = true</code>（安装脚本自动配置）</td><td><span class="badge badge-green">完整</span></td></tr>
+  <tr><td>Claude Code</td><td><code>claude.exe</code></td><td>UserPromptSubmit / PermissionRequest / PostToolUse / Stop</td><td><span class="badge badge-green">完美适配</span></td></tr>
+  <tr><td>Kimi Code</td><td><code>kimi-cli.exe</code></td><td>UserPromptSubmit / PreToolUse / PostToolUse / Stop</td><td><span class="badge badge-orange">适配中</span></td></tr>
+  <tr><td>OpenCode</td><td><code>opencode.exe</code></td><td>UserPromptSubmit / Stop（原生）；完整支持需 opencode-claude-hooks 插件</td><td><span class="badge badge-orange">适配中</span></td></tr>
+  <tr><td>Codex CLI</td><td><code>codex.exe</code></td><td>UserPromptSubmit / PermissionRequest / PostToolUse / Stop · 需启用 <code>[features] hooks = true</code>（安装脚本自动配置）</td><td><span class="badge badge-orange">适配中</span></td></tr>
 </table>
+<p style="font-size:13px;margin-top:8px;">✅ Claude Code 已完美适配（CLI 及 VS Code 插件均可正常使用）。其他 CLI 存在少量兼容性问题，正在修复中。</p>
 
 <h2>配色方案</h2>
 <p>右键菜单可切换 5 种灯色方案，即时预览：</p>
@@ -176,8 +194,8 @@
     <p>以进程 PID 区分 Agent，多个 CLI 实例互不干扰</p>
   </div>
   <div class="feature">
-    <h4>拖拽 + 吸附</h4>
-    <p>自由拖拽窗口到任意位置，靠近屏幕边缘自动吸附</p>
+    <h4>自由拖拽</h4>
+    <p>自由拖拽窗口到任意位置，记住退出时的位置</p>
   </div>
   <div class="feature">
     <h4>位置记忆</h4>
@@ -192,8 +210,8 @@
     <p>默认 / 海洋 / 森林 / 霓虹 / 琥珀，即时切换灯色</p>
   </div>
   <div class="feature">
-    <h4>八档缩放</h4>
-    <p>75% ~ 1000%，灯、文字、边框等比缩放</p>
+    <h4>七档缩放</h4>
+    <p>75% ~ 500%，灯、文字、边框等比缩放</p>
   </div>
   <div class="feature">
     <h4>横向 / 竖向布局</h4>
@@ -239,7 +257,6 @@ Stop ──→ 🟢 绿灯（done）</code></pre>
   <li><strong>拖拽</strong> —— 移动窗口</li>
   <li><strong>双击</strong> —— 紧急关闭</li>
   <li><strong>右键</strong> —— 菜单：置顶 / 显示边框 / 主题 / 配色 / 缩放 / 样式（横向/竖向） / 退出</li>
-  <li><strong>边缘吸附</strong> —— 拖到屏幕边缘自动对齐</li>
 </ul>
 
 <h2>环境要求</h2>

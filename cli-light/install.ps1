@@ -232,6 +232,22 @@ function Install-OpenCodeHooks {
                     )
                 }
             )
+            PermissionRequest = @(
+                @{
+                    matcher = ""
+                    hooks = @(
+                        @{ type = "command"; command = "$CmdBase needs_input" }
+                    )
+                }
+            )
+            PostToolUse = @(
+                @{
+                    matcher = ""
+                    hooks = @(
+                        @{ type = "command"; command = "$CmdBase running" }
+                    )
+                }
+            )
             Stop = @(
                 @{
                     hooks = @(

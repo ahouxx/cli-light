@@ -37,13 +37,21 @@ for ($i = 0; $i -lt 5; $i++) {
     $currentPid = $ppid
 }
 
-try {
-    $body = ConvertTo-Json -InputObject @{state=$state; agent=$agentId} -Compress
-    Add-Content -Path $logFile -Value "$timestamp - Sending to agent: $agentId" -ErrorAction SilentlyContinue
-    Invoke-WebRequest -Uri http://localhost:9876/hook -Method POST -Body $body `
-        -ContentType "application/json" -UseBasicParsing | Out-Null
-    Add-Content -Path $logFile -Value "$timestamp - HTTP request succeeded" -ErrorAction SilentlyContinue
-} catch {
-    Add-Content -Path $logFile -Value "$timestamp - HTTP request failed: $_" -ErrorAction SilentlyContinue
-    exit 0
+$body = ConvertTo-Json -InputObject @{state=$state; agent=$agentId} -Compress
+Add-Content -Path $logFile -Value "$timestamp - Sending to agent: $agentId" -ErrorAction SilentlyContinue
+
+$maxRetries = 3
+for ($retry = 0; $retry -lt $maxRetries; $retry++) {
+    try {
+        Invoke-WebRequest -Uri http://localhost:9876/hook -Method POST -Body $body `
+            -ContentType "application/json" -UseBasicParsing -TimeoutSec 3 | Out-Null
+        Add-Content -Path $logFile -Value "$timestamp - HTTP request succeeded" -ErrorAction SilentlyContinue
+        exit 0
+    } catch {
+        if ($retry -lt ($maxRetries - 1)) {
+            Start-Sleep -Milliseconds 500
+        } else {
+            Add-Content -Path $logFile -Value "$timestamp - HTTP request failed after $maxRetries retries: $_" -ErrorAction SilentlyContinue
+        }
+    }
 }

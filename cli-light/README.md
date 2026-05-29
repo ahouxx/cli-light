@@ -54,10 +54,12 @@ Run Claude Code / Kimi Code / OpenCode — the lights update automatically.
 
 | CLI | Process | Hooks | Status |
 |-----|---------|-------|--------|
-| Claude Code | `claude.exe` | UserPromptSubmit / PermissionRequest / PostToolUse / Stop | Full |
-| Kimi Code | `kimi-cli.exe` | UserPromptSubmit / PreToolUse / PostToolUse / Stop | Full |
-| OpenCode | `opencode.exe` | UserPromptSubmit / Stop (native); full via `opencode-claude-hooks` plugin | Good |
-| Codex CLI | `codex.exe` | UserPromptSubmit / PermissionRequest / PostToolUse / Stop | Full¹ |
+| Claude Code | `claude.exe` | UserPromptSubmit / PermissionRequest / PostToolUse / Stop | ✅ Perfect |
+| Kimi Code | `kimi-cli.exe` | UserPromptSubmit / PreToolUse / PostToolUse / Stop | WIP |
+| OpenCode | `opencode.exe` | UserPromptSubmit / Stop (native); full via `opencode-claude-hooks` plugin | WIP |
+| Codex CLI | `codex.exe` | UserPromptSubmit / PermissionRequest / PostToolUse / Stop | WIP¹ |
+
+✅ Claude Code is fully supported (both CLI and VS Code extension). Other CLIs have minor compatibility issues being worked on.
 
 ## Usage
 
@@ -102,6 +104,8 @@ MIT — see [LICENSE](LICENSE)
 # CLI Light <sup>Windows</sup> v0.2 · 桌面 CLI 状态灯
 
 桌面置顶状态灯，实时显示终端 AI 编程助手（Claude Code / Kimi Code / OpenCode / Codex）的运行状态。
+
+✅ **Claude Code 已完美适配**（CLI 及 VS Code 插件均可正常使用）。其他 CLI 存在少量兼容性问题，正在修复中。
 
 ## 灯光说明
 
@@ -149,7 +153,6 @@ powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall
 
 - **拖动**窗口移动位置
 - **右键**菜单 → 置顶 / 显示边框 / 主题 / 配色 / 缩放 / 样式（横向/竖向） / 退出
-- 拖到屏幕边缘**自动吸附**
 
 ## 已知限制
 
