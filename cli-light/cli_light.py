@@ -362,7 +362,8 @@ class CLILight:
             with self._agents_lock:
                 red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
                 orange_c = sum(1 for s in self._agents.values() if s == 'running')
-                hook_only = 1 if "cli-unknown" in self._agents else 0
+                hook_state = self._agents.get("cli-unknown", "")
+                hook_only = 1 if hook_state in ("running", "needs_input") else 0
                 total = self._process_count + hook_only
                 green_c = total - red_c - orange_c
 
@@ -683,7 +684,8 @@ class CLILight:
 
     def _update(self):
         with self._agents_lock:
-            hook_only = 1 if "cli-unknown" in self._agents else 0
+            hook_state = self._agents.get("cli-unknown", "")
+            hook_only = 1 if hook_state in ("running", "needs_input") else 0
             total = self._process_count + hook_only
             red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
             orange_c = sum(1 for s in self._agents.values() if s == 'running')

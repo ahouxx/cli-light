@@ -13,7 +13,7 @@ function Get-ParentProcessId {
     } catch {
         # Get-CimInstance may need admin; fall back to Get-Process
         try {
-            $proc = Get-WmiObject Win32_Process -Filter "ProcessId=$Pid" -ErrorAction Stop
+            $proc = Get-WmiObject Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction Stop
             return $proc.ParentProcessId
         } catch {
             return 0
