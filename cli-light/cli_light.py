@@ -5,6 +5,8 @@ Green=idle · Orange blinking=task running · Red=needs input
 HTTP hook server on localhost:9876 — CLI hooks POST state changes.
 Process scanner detects running CLI executables for baseline count.
 """
+__version__ = "0.2"
+
 import json
 import os
 import socket
@@ -15,6 +17,7 @@ import tkinter as tk
 from tkinter import messagebox
 import ctypes
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import urllib.request
 
 if sys.stdout is None:
     sys.stdout = open(os.devnull, 'w')
@@ -230,6 +233,7 @@ class CLILight:
 
         self._httpd = self._start_http_server()
         threading.Thread(target=self._process_monitor, daemon=True).start()
+        threading.Thread(target=self._check_update, daemon=True).start()
 
         self._init_tray()
         self._blink_tick()
@@ -282,6 +286,33 @@ class CLILight:
         with self._agents_lock:
             self._agents[agent_id] = new_state
         self.root.after(0, self._update)
+
+    # ── Update check ──────────────────────────────────────
+    def _check_update(self):
+        """Check for new version on startup (background thread)."""
+        # GitHub raw URL — change this to your own repo
+        remote_url = "https://raw.githubusercontent.com/user/cli-light/main/cli-light/version.json"
+        try:
+            req = urllib.request.Request(remote_url, headers={"User-Agent": "CLI-Light"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            remote_ver = data.get("version", "")
+            if remote_ver and remote_ver != __version__:
+                self.root.after(0, lambda: self._notify_update(remote_ver, data.get("url", ""), data.get("changelog", "")))
+        except Exception:
+            pass  # Silently ignore network errors
+
+    def _notify_update(self, new_ver, url, changelog):
+        """Show update notification (main thread)."""
+        msg = f"CLI Light 有新版本 v{new_ver}（当前 v{__version__}）"
+        if changelog:
+            msg += f"\n\n更新内容：{changelog}"
+        if url:
+            msg += f"\n\n下载地址：{url}"
+        try:
+            messagebox.showinfo("CLI Light — 有新版本", msg)
+        except Exception:
+            pass
 
     # ── System tray ──────────────────────────────────────
     def _make_tray_icon(self, color_hex, number):

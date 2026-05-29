@@ -2,20 +2,26 @@
 # Install:   powershell -ExecutionPolicy Bypass -File install.ps1
 # Uninstall: powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall [-Force]
 # Skip desktop: powershell -ExecutionPolicy Bypass -File install.ps1 -NoDesktop
-param([switch]$Uninstall, [switch]$NoDesktop, [switch]$Force)
+# Portable:  powershell -ExecutionPolicy Bypass -File install.ps1 -Portable (install in current dir)
+param([switch]$Uninstall, [switch]$NoDesktop, [switch]$Force, [switch]$Portable)
 
 $ErrorActionPreference = "Stop"
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$NotifyPs1 = Join-Path $ScriptDir "hooks\notify.ps1"
+$SourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$InstallDir = if ($Portable) { $SourceDir } else { Join-Path $env:LOCALAPPDATA "CLI Light" }
+$NotifyPs1 = Join-Path $InstallDir "hooks\notify.ps1"
 
 # Build the command string for hook configs (PowerShell-escaped for JSON)
 $CmdBase = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$NotifyPs1`""
 
 Write-Host @"
 
-  CLI Light Hook Installer
-  =========================
+  CLI Light Installer v0.2
+  ========================
 "@ -ForegroundColor Cyan
+
+if (-not $Portable) {
+    Write-Host "  Install path: $InstallDir" -ForegroundColor DarkGray
+}
 
 # ── Helpers ─────────────────────────────────────────────────
 function Write-Step { param([string]$Text) Write-Host "  $Text" -NoNewline }
@@ -345,11 +351,11 @@ function Remove-CodexHooks {
 
 # ── Generate launch.vbs ─────────────────────────────────────
 function New-LaunchVbs {
-    $vbsPath = Join-Path $ScriptDir "launch.vbs"
+    $vbsPath = Join-Path $InstallDir "launch.vbs"
     Write-Step "launch.vbs"
     $pythonw = Find-Pythonw
 
-    $mainScript = Join-Path $ScriptDir "cli_light.py"
+    $mainScript = Join-Path $InstallDir "cli_light.py"
 
     $vbsContent = @"
 ' CLI Light launcher (auto-generated)
@@ -408,22 +414,22 @@ function _New-Shortcut {
 
 function Add-Shortcuts {
     param([switch]$NoDesktop)
-    $vbsPath = Join-Path $ScriptDir "launch.vbs"
-    $ps1Path = Join-Path $ScriptDir "install.ps1"
+    $vbsPath = Join-Path $InstallDir "launch.vbs"
+    $ps1Path = Join-Path $InstallDir "install.ps1"
     $startMenu = [Environment]::GetFolderPath('Programs')
     $smDir = Join-Path $startMenu "CLI Light"
 
     if (Test-Path $smDir) { Remove-Item "$smDir\*" -Force -ErrorAction SilentlyContinue }
     else { New-Item -ItemType Directory -Path $smDir -Force | Out-Null }
 
-    _New-Shortcut (Join-Path $smDir "CLI Light.lnk") $vbsPath -WorkingDir $ScriptDir -Description "CLI Light"
+    _New-Shortcut (Join-Path $smDir "CLI Light.lnk") $vbsPath -WorkingDir $InstallDir -Description "CLI Light"
     _New-Shortcut (Join-Path $smDir "Uninstall CLI Light.lnk") "powershell.exe" `
         -Arguments "-NoProfile -ExecutionPolicy Bypass -File `"$ps1Path`" -Uninstall" `
-        -WorkingDir $ScriptDir -Description "Uninstall CLI Light"
+        -WorkingDir $InstallDir -Description "Uninstall CLI Light"
 
     if (-not $NoDesktop) {
         $desktopDir = [Environment]::GetFolderPath('Desktop')
-        _New-Shortcut (Join-Path $desktopDir "CLI Light.lnk") $vbsPath -WorkingDir $ScriptDir -Description "CLI Light"
+        _New-Shortcut (Join-Path $desktopDir "CLI Light.lnk") $vbsPath -WorkingDir $InstallDir -Description "CLI Light"
     }
 
     $where = if ($NoDesktop) { "Start Menu" } else { "Desktop + Start Menu" }
@@ -457,15 +463,15 @@ function Remove-StateFiles {
 # ── Generated files cleanup ──────────────────────────────────
 function Remove-GeneratedFiles {
     $removed = $false
-    $launchVbs = Join-Path $ScriptDir "launch.vbs"
+    $launchVbs = Join-Path $InstallDir "launch.vbs"
     if (Test-Path $launchVbs) { Remove-Item $launchVbs -Force; $removed = $true }
     if ($removed) { Write-OK } else { Write-Skip }
 }
 
 # ── Uninstall batch script ───────────────────────────────────
 function New-UninstallBat {
-    $batPath = Join-Path $ScriptDir "uninstall.bat"
-    $ps1Path = Join-Path $ScriptDir "install.ps1"
+    $batPath = Join-Path $InstallDir "uninstall.bat"
+    $ps1Path = Join-Path $InstallDir "install.ps1"
     $content = @"
 @echo off
 echo Uninstalling CLI Light...
@@ -536,11 +542,27 @@ try {
         Write-Step "Processes"
         Stop-CliLight
         Write-Host ""
-        Write-Host "CLI Light has been uninstalled. The project folder is kept — delete it manually if desired." -ForegroundColor Green
+        # Remove install directory if it's not the source directory
+        if ($InstallDir -ne $SourceDir -and (Test-Path $InstallDir)) {
+            Write-Step "Install directory"
+            Remove-Item $InstallDir -Recurse -Force
+            Write-OK
+        }
+        Write-Host "CLI Light has been uninstalled." -ForegroundColor Green
     } else {
         if (-not (Test-Python)) {
             Write-Host "Python not found in PATH. Please install Python 3.10+ first." -ForegroundColor Red
             exit 1
+        }
+        # Copy files to install directory (unless portable mode)
+        if (-not $Portable -and $SourceDir -ne $InstallDir) {
+            Write-Step "Copying files"
+            if (-not (Test-Path $InstallDir)) {
+                New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+            }
+            $exclude = @(".git", "__pycache__", "*.pyc", "docs")
+            Get-ChildItem $SourceDir -Exclude $exclude | Copy-Item -Destination $InstallDir -Recurse -Force
+            Write-Host "  OK ($InstallDir)" -ForegroundColor Green
         }
         Write-Host "`nInstalling hooks...`n"
         Install-ClaudeHooks
