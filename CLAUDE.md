@@ -1,49 +1,68 @@
-# CLI Light — 桌面 CLI 状态灯
+# CLI Light v0.2
 
-## 项目概述
+> 🔵 Total · 🟢 Idle · 🟠 Running · 🔴 Needs Input
+>
+> 桌面置顶状态灯，实时显示 AI CLI 工具的运行状态
+> Desktop always-on-top traffic light for AI CLI tools
 
-Windows 桌面置顶状态灯，实时显示终端 CLI（Claude Code / Kimi Code / OpenCode / Codex）的运行状态。
+✅ **Claude Code 完美适配** — CLI + VS Code 插件均支持
+✅ **Claude Code fully supported** — CLI + VS Code extension
+🟡 Kimi Code / OpenCode / Codex 适配中
 
-- **蓝灯**：CLI 总数（进程检测）
-- **绿灯**：空闲
-- **橙灯**：运行中（闪烁）
-- **红灯**：需确认/授权
-- **布局**：支持横向/竖向切换（右键菜单 → 样式）
+---
 
-## 架构
+## 效果展示
 
-```
-cli_light.py          # 主程序（tkinter GUI + HTTP 服务 + 进程扫描）
-run.bat               # 双击启动（pythonw，无控制台）
-launch.vbs            # 自动探测 Python 路径 + 无控制台启动（install.ps1 自动生成）
-hooks/
-  notify.ps1          # Hook 通知脚本（POST 到 localhost:9876，回退进程树找 CLI PID）
-  claude-hooks.json   # Hook 配置参考模板（推荐通过 install.ps1 自动配置）
-install.ps1           # 一键安装/卸载 hook（支持 Claude Code / Kimi Code / OpenCode）
-```
+| | |
+|:---:|:---:|
+| ![1](https://raw.githubusercontent.com/ahouxx/cli-light/main/cli-light/docs/screenshots/vscode.png) | ![2](https://raw.githubusercontent.com/ahouxx/cli-light/main/cli-light/docs/screenshots/customize.png) |
+| 与 VS Code 融为一体 | 深色/透明，横/竖布局 |
+| ![3](https://raw.githubusercontent.com/ahouxx/cli-light/main/cli-light/docs/screenshots/large.png) | ![4](https://raw.githubusercontent.com/ahouxx/cli-light/main/cli-light/docs/screenshots/small.png) |
+| 放大显示，一眼就看到 | 小到当托盘指示灯 |
 
-## 核心机制
+---
 
-1. **进程扫描**：每 3 秒 `Get-Process` 检测 `claude.exe` / `kimi-cli.exe` / `opencode.exe` / `codex.exe`
-2. **Hook 上报**：各 CLI 通过 hook 机制 POST 状态到 `localhost:9876/hook`，携带 `{agent, state}`
-3. **Per-agent 追踪**：`notify.ps1` 回溯进程树找到 CLI 进程 PID 作为 Agent ID，多实例互不干扰
+## 支持 CLI
 
-## Hook 生命周期
+| CLI | 状态 |
+|-----|:----:|
+| **Claude Code** | ✅ 完美适配 |
+| Kimi Code | 🟡 适配中 |
+| OpenCode | 🟡 适配中 |
+| Codex CLI | 🟡 适配中 |
 
-```
-UserPromptSubmit → 橙灯（running）
-  ↓ 需要授权
-PreToolUse / PermissionRequest → 红灯（needs_input）
-  ↓ 授权通过 → 工具执行
-PostToolUse → 橙灯恢复（running）
-  ↓ 任务完成
-Stop → 绿灯（done）
-```
+---
 
-- Codex CLI 需在 `~/.codex/config.toml` 中启用 `[features] hooks = true`（install.ps1 自动配置）
-- Claude Code 需重启会话后 hooks 才生效（install.ps1 自动配置 `~/.claude/settings.json`）
+## 配色方案
 
-## 已知问题
+| 方案 | 颜色 |
+|------|------|
+| **默认** | 🔵 `#2266CC` 🟢 `#009933` 🟠 `#E06000` 🔴 `#CC1111` |
+| **海洋** | 🔵 `#0077B6` 🟢 `#00B4D8` 🟠 `#48CAE4` 🔴 `#E63946` |
+| **森林** | 🔵 `#2D6A4F` 🟢 `#52B788` 🟠 `#D4A373` 🔴 `#E76F51` |
+| **霓虹** | 🔵 `#7C3AED` 🟢 `#06D6A0` 🟠 `#FFD166` 🔴 `#FF6B6B` |
+| **琥珀** | 🔵 `#8B5CF6` 🟢 `#10B981` 🟠 `#F59E0B` 🔴 `#EF4444` |
 
-- OpenCode 原生仅支持 UserPromptSubmit / Stop 两个 hook 事件，完整支持需安装 `opencode-claude-hooks` 插件
-- 独占全屏模式（DX/Vulkan）下窗口无法显示
+---
+
+## 功能
+
+- **进程自动检测** — 每 3 秒扫描 CLI 进程
+- **Hook 状态上报** — 任务状态实时推送
+- **一键安装** — 自动配置 Hook + 快捷方式
+- **多实例追踪** — PID 区分 Agent
+- **自由拖拽** — 位置记忆
+- **四种主题** — 深色 / 浅色 / 透明 / 跟随系统
+- **5 种配色** — 默认 / 海洋 / 森林 / 霓虹 / 琥珀
+- **七档缩放** — 75% ~ 500%
+- **横竖布局** — 横向或竖向
+- **显示边框** — 可选方形边框
+- **重复启动保护** — 检测到已有实例时弹窗
+- **干净卸载** — 一键移除所有配置
+
+---
+
+## 安装
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
