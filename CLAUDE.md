@@ -1,13 +1,14 @@
-# CLI Light — 桌面 CLI 状态红绿灯
+# CLI Light — 桌面 CLI 状态灯
 
 ## 项目概述
 
-Windows 桌面置顶状态灯，实时显示终端 CLI（Claude Code / Kimi Code / OpenCode）的运行状态。
+Windows 桌面置顶状态灯，实时显示终端 CLI（Claude Code / Kimi Code / OpenCode / Codex）的运行状态。
 
 - **蓝灯**：CLI 总数（进程检测）
 - **绿灯**：空闲
 - **橙灯**：运行中（闪烁）
 - **红灯**：需确认/授权
+- **布局**：支持横向/竖向切换（右键菜单 → 样式）
 
 ## 架构
 
@@ -40,6 +41,7 @@ Stop → 绿灯（done）
 ```
 
 - Codex CLI 需在 `~/.codex/config.toml` 中启用 `[features] hooks = true`（install.ps1 自动配置）
+- Claude Code 需重启会话后 hooks 才生效（install.ps1 自动配置 `~/.claude/settings.json`）
 
 ## 已知问题
 

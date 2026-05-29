@@ -59,7 +59,7 @@
 <div class="wrap">
 
 <div class="hero">
-  <h1>CLI Light <span>v0.1 for Windows</span></h1>
+  <h1>CLI Light <span>v0.2 for Windows</span></h1>
   <p style="font-size:18px;margin-top:8px;">桌面置顶状态灯，实时显示 AI CLI 工具的运行状态</p>
   <div class="lights-demo">
     <div class="light-group">
@@ -79,7 +79,15 @@
       <div class="light-label">需确认</div>
     </div>
   </div>
-  <p style="font-size:13px;color:var(--muted);">蓝 · 总数 &nbsp;|&nbsp; 绿 · 空闲 &nbsp;|&nbsp; 橙 · 运行中（闪烁） &nbsp;|&nbsp; 红 · 等待授权</p>
+  <p style="font-size:13px;color:var(--muted);">蓝 · 总数 &nbsp;|&nbsp; 绿 · 空闲 &nbsp;|&nbsp; 橙 · 运行中（闪烁） &nbsp;|&nbsp; 红 · 等待授权 &nbsp;|&nbsp; <span id="clock"></span></p>
+  <script>
+    function updateClock() {
+      var el = document.getElementById('clock');
+      if (el) el.textContent = new Date().toLocaleTimeString('zh-CN', {hour12: false});
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+  </script>
 </div>
 
 <h2>支持 CLI</h2>
@@ -88,7 +96,7 @@
   <tr><td>Claude Code</td><td><code>claude.exe</code></td><td>UserPromptSubmit / PermissionRequest / PostToolUse / Stop</td><td><span class="badge badge-green">完整</span></td></tr>
   <tr><td>Kimi Code</td><td><code>kimi-cli.exe</code></td><td>UserPromptSubmit / PreToolUse / PostToolUse / Stop</td><td><span class="badge badge-green">完整</span></td></tr>
   <tr><td>OpenCode</td><td><code>opencode.exe</code></td><td>UserPromptSubmit / Stop（原生）；完整支持需 opencode-claude-hooks 插件</td><td><span class="badge badge-blue">良好</span></td></tr>
-  <tr><td>Codex CLI</td><td><code>codex.exe</code></td><td>UserPromptSubmit / PostToolUse / Stop · 需启用 <code>[features] hooks = true</code>（安装脚本自动配置）</td><td><span class="badge badge-blue">良好</span></td></tr>
+  <tr><td>Codex CLI</td><td><code>codex.exe</code></td><td>UserPromptSubmit / PermissionRequest / PostToolUse / Stop · 需启用 <code>[features] hooks = true</code>（安装脚本自动配置）</td><td><span class="badge badge-green">完整</span></td></tr>
 </table>
 
 <h2>配色方案</h2>
@@ -184,8 +192,12 @@
     <p>默认 / 海洋 / 森林 / 霓虹 / 琥珀，即时切换灯色</p>
   </div>
   <div class="feature">
-    <h4>四档缩放</h4>
-    <p>75% / 100% / 125% / 150%，灯、文字、边框等比缩放</p>
+    <h4>八档缩放</h4>
+    <p>75% ~ 1000%，灯、文字、边框等比缩放</p>
+  </div>
+  <div class="feature">
+    <h4>横向 / 竖向布局</h4>
+    <p>右键菜单切换灯的排列方向，适应不同屏幕位置</p>
   </div>
   <div class="feature">
     <h4>显示边框</h4>
@@ -226,7 +238,7 @@ Stop ──→ 🟢 绿灯（done）</code></pre>
 <ul>
   <li><strong>拖拽</strong> —— 移动窗口</li>
   <li><strong>双击</strong> —— 紧急关闭</li>
-  <li><strong>右键</strong> —— 菜单：置顶 / 显示边框 / 主题 / 配色 / 缩放 / 退出</li>
+  <li><strong>右键</strong> —— 菜单：置顶 / 显示边框 / 主题 / 配色 / 缩放 / 样式（横向/竖向） / 退出</li>
   <li><strong>边缘吸附</strong> —— 拖到屏幕边缘自动对齐</li>
 </ul>
 
@@ -237,7 +249,7 @@ Stop ──→ 🟢 绿灯（done）</code></pre>
 </ul>
 
 <div class="footer">
-  CLI Light · MIT License
+  CLI Light v0.2 · MIT License
 </div>
 
 </div>

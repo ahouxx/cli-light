@@ -1,4 +1,4 @@
-# CLI Light <sup>Windows</sup>
+# CLI Light <sup>Windows</sup> v0.2
 
 Desktop always-on-top traffic light for Windows that shows real-time status of your AI coding CLI tools (Claude Code, Kimi Code, OpenCode, Codex).
 
@@ -57,17 +57,15 @@ Run Claude Code / Kimi Code / OpenCode — the lights update automatically.
 | Claude Code | `claude.exe` | UserPromptSubmit / PermissionRequest / PostToolUse / Stop | Full |
 | Kimi Code | `kimi-cli.exe` | UserPromptSubmit / PreToolUse / PostToolUse / Stop | Full |
 | OpenCode | `opencode.exe` | UserPromptSubmit / Stop (native); full via `opencode-claude-hooks` plugin | Good |
-| Codex CLI | `codex.exe` | UserPromptSubmit / PostToolUse / Stop | Good¹ |
+| Codex CLI | `codex.exe` | UserPromptSubmit / PermissionRequest / PostToolUse / Stop | Full¹ |
 
 ## Usage
 
 - ¹ Codex requires `[features] hooks = true` in `~/.codex/config.toml` for hook events to fire. The installer adds this automatically.
-
-## Usage
-
 - **Drag** to move the window
-- **Right-click** for menu (toggle always-on-top / quit)
+- **Right-click** for menu (toggle always-on-top / layout / color scheme / scale / quit)
 - Drag to screen edges to **snap**
+- Right-click menu → **样式** to switch between horizontal and vertical layout
 
 ## How It Works
 
@@ -101,9 +99,9 @@ Stop -> Green (done)
 MIT — see [LICENSE](LICENSE)
 
 
-# CLI Light <sup>Windows</sup> · 桌面 CLI 状态红绿灯
+# CLI Light <sup>Windows</sup> v0.2 · 桌面 CLI 状态灯
 
-桌面置顶状态灯，实时显示终端 AI 编程助手（Claude Code / Kimi Code / OpenCode）的运行状态。
+桌面置顶状态灯，实时显示终端 AI 编程助手（Claude Code / Kimi Code / OpenCode / Codex）的运行状态。
 
 ## 灯光说明
 
@@ -150,7 +148,7 @@ powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall
 ## 操作
 
 - **拖动**窗口移动位置
-- **右键**菜单 → 置顶显示 / 退出
+- **右键**菜单 → 置顶 / 显示边框 / 主题 / 配色 / 缩放 / 样式（横向/竖向） / 退出
 - 拖到屏幕边缘**自动吸附**
 
 ## 已知限制

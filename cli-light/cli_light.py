@@ -67,6 +67,7 @@ class RECT_C(ctypes.Structure):
     _fields_ = [("left", ctypes.c_int32), ("top", ctypes.c_int32),
                 ("right", ctypes.c_int32), ("bottom", ctypes.c_int32)]
 
+
 # ── Lens color schemes ──────────────────────────────────────
 # Each scheme has 4 lights: total / done / running / needs_input
 # with "on" and "dim" (blink-off) colors.
@@ -197,11 +198,17 @@ class CLILight:
         self._drag_x = self._drag_y = 0
         self._running = True
 
-        self.lights = {
+        self._lights_h = {
             "total":       {"cx": 20, "cy": 20, "r": LENS_R},
             "done":        {"cx": 54, "cy": 20, "r": LENS_R},
             "running":     {"cx": 88, "cy": 20, "r": LENS_R},
             "needs_input": {"cx": 122, "cy": 20, "r": LENS_R},
+        }
+        self._lights_v = {
+            "total":       {"cx": 20, "cy": 20, "r": LENS_R},
+            "done":        {"cx": 20, "cy": 54, "r": LENS_R},
+            "running":     {"cx": 20, "cy": 88, "r": LENS_R},
+            "needs_input": {"cx": 20, "cy": 122, "r": LENS_R},
         }
 
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
@@ -211,6 +218,8 @@ class CLILight:
         self.theme = saved.get("theme", "dark")
         self.color_scheme = saved.get("color_scheme", "默认")
         self.scale = saved.get("scale", 1.0)
+        self.vertical = saved.get("vertical", False)
+        self.lights = self._lights_v if self.vertical else self._lights_h
         w, h = self._scaled_wh()
         self.root.geometry(f"{w}x{h}+{x}+{y}")
         self._apply_transparent_mode()
@@ -290,42 +299,43 @@ class CLILight:
         # ── Color bitmap ──
         mem = gdi32.CreateCompatibleDC(hdc)
         bmp = gdi32.CreateCompatibleBitmap(hdc, SZ, SZ)
-        old = gdi32.SelectObject(mem, bmp)
+        old_bmp = gdi32.SelectObject(mem, bmp)
 
-        gdi32.SaveDC(mem)
-        pen = gdi32.CreatePen(0, 0, color_ref)
+        # Fill background with color first
         brush = gdi32.CreateSolidBrush(color_ref)
-        gdi32.SelectObject(mem, pen)
-        gdi32.SelectObject(mem, brush)
+        old_brush = gdi32.SelectObject(mem, brush)
+        gdi32.PatBlt(mem, 0, 0, SZ, SZ, 0x00F00021)  # PATCOPY - fill with brush
+        # Draw circle on top
         gdi32.Ellipse(mem, 1, 1, SZ - 1, SZ - 1)
+
         if number > 0:
             t = str(number)
             fh = 18 if len(t) < 2 else (14 if len(t) < 3 else 11)
             font = gdi32.CreateFontW(fh, 0, 0, 0, 700, 0, 0, 0, 0, 0, 0, 0, 0, "Arial")
-            gdi32.SelectObject(mem, font)
-            user32.SetTextColor(mem, 0xFFFFFF)
-            gdi32.SetBkMode(mem, 1)
+            old_font = gdi32.SelectObject(mem, font)
+            user32.SetTextColor(mem, 0x00FFFFFF)  # White text (COLORREF: B=FF G=FF R=FF)
+            gdi32.SetBkMode(mem, 1)  # TRANSPARENT
             rect = RECT_C(0, 0, SZ, SZ)
-            user32.DrawTextW(mem, t, len(t), ctypes.byref(rect), 0x25)
+            user32.DrawTextW(mem, t, len(t), ctypes.byref(rect), 0x25)  # DT_CENTER|DT_VCENTER|DT_SINGLELINE
+            gdi32.SelectObject(mem, old_font)
             gdi32.DeleteObject(font)
-        gdi32.RestoreDC(mem, -1)
-        gdi32.DeleteObject(pen)
+
+        gdi32.SelectObject(mem, old_brush)
         gdi32.DeleteObject(brush)
-        gdi32.SelectObject(mem, old)
+        gdi32.SelectObject(mem, old_bmp)
         gdi32.DeleteDC(mem)
 
-        # ── Mask bitmap: white circle = opaque, rest = transparent ──
+        # ── Mask bitmap: white = opaque, black = transparent ──
         mem_mask = gdi32.CreateCompatibleDC(hdc)
         bmp_mask = gdi32.CreateBitmap(SZ, SZ, 1, 1, None)
-        old_mask = gdi32.SelectObject(mem_mask, bmp_mask)
-        # Initialize entire mask to black (transparent)
-        gdi32.PatBlt(mem_mask, 0, 0, SZ, SZ, 0x00000042)  # BLACKNESS
-        # Draw white circle (opaque area)
+        old_mask_bmp = gdi32.SelectObject(mem_mask, bmp_mask)
+        # Fill entire mask with white (all opaque)
         mask_brush = gdi32.CreateSolidBrush(0xFFFFFF)
-        gdi32.SelectObject(mem_mask, mask_brush)
-        gdi32.Ellipse(mem_mask, 1, 1, SZ - 1, SZ - 1)
+        old_mask_brush = gdi32.SelectObject(mem_mask, mask_brush)
+        gdi32.PatBlt(mem_mask, 0, 0, SZ, SZ, 0x00F00021)  # PATCOPY
+        gdi32.SelectObject(mem_mask, old_mask_brush)
         gdi32.DeleteObject(mask_brush)
-        gdi32.SelectObject(mem_mask, old_mask)
+        gdi32.SelectObject(mem_mask, old_mask_bmp)
         gdi32.DeleteDC(mem_mask)
 
         user32.ReleaseDC(0, hdc)
@@ -340,76 +350,16 @@ class CLILight:
         return hicon
 
     def _init_tray(self):
-        try:
-            self._prev_tray_state = None
-            self._tray_hint = False
-            self._tray_hicon = None
-            nid = NOTIFYICONDATAW()
-            nid.cbSize = ctypes.sizeof(NOTIFYICONDATAW)
-            nid.hWnd = ctypes.c_void_p(int(self.root.winfo_id()))
-            nid.uID = 1
-            nid.uFlags = NIF_ICON | NIF_TIP
-            nid.uCallbackMessage = 0
-            self._tray_nid = nid
-            self._update_tray()
-        except Exception:
-            self._tray_nid = None
+        # Tray icon removed — use main window right-click menu to exit
+        self._tray_nid = None
+        self._tray_hicon = None
+        self._tray_added = False
 
     def _update_tray(self):
-        if self._tray_nid is None:
-            return
-        try:
-            with self._agents_lock:
-                red_c = sum(1 for s in self._agents.values() if s == 'needs_input')
-                orange_c = sum(1 for s in self._agents.values() if s == 'running')
-                hook_state = self._agents.get("cli-unknown", "")
-                hook_only = 1 if hook_state in ("running", "needs_input") else 0
-                total = self._process_count + hook_only
-                green_c = total - red_c - orange_c
-
-            if red_c > 0:
-                color, num, tip = "#CC1111", red_c, f"需确认 {red_c}"
-            elif orange_c > 0:
-                color, num, tip = "#E06000", orange_c, f"运行中 {orange_c}"
-            elif total > 0:
-                color, num, tip = "#009933", green_c, f"待机 {green_c}"
-            else:
-                color, num, tip = "#505050", 0, "CLI Light"
-
-            state_key = (color, num)
-            if state_key == self._prev_tray_state and self._tray_hint:
-                return
-            self._prev_tray_state = state_key
-
-            nid = self._tray_nid
-            if self._tray_hint:
-                nid.hIcon = self._make_tray_icon(color, num)
-                nid.uFlags = NIF_ICON | NIF_TIP
-                if self._tray_hicon:
-                    user32.DestroyIcon(self._tray_hicon)
-                self._tray_hicon = nid.hIcon
-            else:
-                nid.hIcon = self._make_tray_icon(color, num)
-                nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP
-                nid.uCallbackMessage = WM_TRAY
-                if self._tray_hicon:
-                    user32.DestroyIcon(self._tray_hicon)
-                self._tray_hicon = nid.hIcon
-                shell32.Shell_NotifyIconW(NIM_ADD, ctypes.byref(nid))
-                self._tray_hint = True
-
-            nid.szTip = f"CLI Light — {tip}"
-            shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(nid))
-        except Exception:
-            pass
+        pass
 
     def _remove_tray(self):
-        if self._tray_nid is not None:
-            shell32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(self._tray_nid))
-            self._tray_nid = None
-        if getattr(self, '_tray_hicon', None):
-            user32.DestroyIcon(self._tray_hicon)
-            self._tray_hicon = None
+        pass
 
     # ── UI ──────────────────────────────────────────────
     def _build_ui(self):
@@ -482,6 +432,8 @@ class CLILight:
         return tuple(max(1, int(v * self.scale)) for v in vals)
 
     def _scaled_wh(self):
+        if self.vertical:
+            return self._scaled(H, W)  # swap: narrow and tall
         return self._scaled(W, H)
 
     def _lens_color(self, key, on):
@@ -533,6 +485,15 @@ class CLILight:
                 label=self._menu_label(name, self.color_scheme == name),
                 command=lambda n=name: self._set_color_scheme(n))
         self.menu.add_cascade(label="配色", menu=self._cs_menu)
+        # Layout submenu
+        self._layout_menu = tk.Menu(self.menu, tearoff=0, bg=tc["menu_bg"], fg=tc["menu_fg"],
+                                    activebackground=tc["menu_abg"], activeforeground=tc["menu_afg"],
+                                    font=("Microsoft YaHei", 9))
+        for vertical, label in [(False, "横向"), (True, "竖向")]:
+            self._layout_menu.add_command(
+                label=self._menu_label(label, self.vertical == vertical),
+                command=lambda v=vertical: self._set_layout(v))
+        self.menu.add_cascade(label="样式", menu=self._layout_menu)
         self.menu.add_separator()
         self.menu.add_command(label="退出", command=self._quit)
 
@@ -553,6 +514,20 @@ class CLILight:
             self._scale_menu.entryconfigure(i, label=self._menu_label(label, abs(self.scale - factor) < 0.01))
         for i, name in enumerate(COLOR_SCHEMES):
             self._cs_menu.entryconfigure(i, label=self._menu_label(name, self.color_scheme == name))
+        for i, (vertical, label) in enumerate([(False, "横向"), (True, "竖向")]):
+            self._layout_menu.entryconfigure(i, label=self._menu_label(label, self.vertical == vertical))
+
+    def _set_layout(self, vertical):
+        self.vertical = vertical
+        self.lights = self._lights_v if vertical else self._lights_h
+        w, h = self._scaled_wh()
+        x, y = self.root.winfo_x(), self.root.winfo_y()
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.canvas.config(width=w, height=h)
+        self._draw_housing()
+        self._refresh_menu()
+        self._update()
+        self._save_state()
 
     def _set_theme(self, theme):
         self.theme = theme
@@ -645,21 +620,14 @@ class CLILight:
 
     def _process_monitor(self):
         while self._running:
-            new_count, _ = self._scan_processes()
+            new_count, live_pids = self._scan_processes()
             with self._agents_lock:
-                diff = new_count - self._process_count
-                if diff < 0:
-                    excess = -diff
-                    for state in ('running', 'needs_input', 'done'):
-                        if excess <= 0:
-                            break
-                        to_remove = [aid for aid, st in self._agents.items()
-                                     if st == state and aid != "cli-unknown"]
-                        for aid in to_remove:
-                            if excess <= 0:
-                                break
-                            del self._agents[aid]
-                            excess -= 1
+                # Remove agents whose PID is no longer alive
+                if live_pids:
+                    dead = [aid for aid in self._agents
+                            if aid != "cli-unknown" and aid not in live_pids]
+                    for aid in dead:
+                        del self._agents[aid]
                 self._process_count = new_count
             for _ in range(30):
                 if not self._running:
@@ -733,33 +701,25 @@ class CLILight:
 
     @classmethod
     def _load_state(cls, sw, sh):
-        s = 1.0
+        d = {}
         try:
             p = cls._get_state_path()
             if os.path.exists(p):
                 with open(p, 'r') as f:
                     d = json.load(f)
-                s = d.get("scale", 1.0)
         except Exception:
-            pass
+            d = {}
+        s = d.get("scale", 1.0)
         w = max(1, int(W * s))
         h = max(1, int(H * s))
         dx, dy = sw - w - 20, 20
-        try:
-            p = cls._get_state_path()
-            if os.path.exists(p):
-                with open(p, 'r') as f:
-                    d = json.load(f)
-                x = d.get('x', dx)
-                y = d.get('y', dy)
-                if x < 0: x = 0
-                if y < 0: y = 0
-                if x > sw - w: x = sw - w
-                if y > sh - h: y = sh - h
-                return x, y, d
-        except Exception:
-            pass
-        return dx, dy, {}
+        x = d.get('x', dx)
+        y = d.get('y', dy)
+        if x < 0: x = 0
+        if y < 0: y = 0
+        if x > sw - w: x = sw - w
+        if y > sh - h: y = sh - h
+        return x, y, d
 
     def _save_state(self):
         try:
@@ -774,6 +734,7 @@ class CLILight:
                     'theme': self.theme,
                     'scale': self.scale,
                     'color_scheme': self.color_scheme,
+                    'vertical': self.vertical,
                 }, f)
         except Exception:
             pass

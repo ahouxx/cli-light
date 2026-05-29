@@ -177,9 +177,19 @@ hooks = [
   { event = "Stop",             command = '$CmdBase done' },
 ]
 "@
-        # Replace existing hooks block, or append before EOF
+        # Replace existing hooks block (handles nested brackets), or append before EOF
         if ($content -match 'hooks\s*=\s*\[') {
-            $newContent = $content -replace 'hooks\s*=\s*\[[^\]]*\]', $hooksBlock
+            $start = [regex]::Match($content, 'hooks\s*=\s*\[').Index
+            $depth = 0; $end = -1
+            for ($j = $start; $j -lt $content.Length; $j++) {
+                if ($content[$j] -eq '[') { $depth++ }
+                elseif ($content[$j] -eq ']') { $depth--; if ($depth -eq 0) { $end = $j; break } }
+            }
+            if ($end -gt 0) {
+                $newContent = $content.Substring(0, $start) + $hooksBlock + $content.Substring($end + 1)
+            } else {
+                $newContent = $content.TrimEnd() + "`n`n$hooksBlock`n"
+            }
         } else {
             $newContent = $content.TrimEnd() + "`n`n$hooksBlock`n"
         }
@@ -275,6 +285,14 @@ function Install-CodexHooks {
                     matcher = ""
                     hooks = @(
                         @{ type = "command"; command = "$CmdBase running" }
+                    )
+                }
+            )
+            PermissionRequest = @(
+                @{
+                    matcher = ""
+                    hooks = @(
+                        @{ type = "command"; command = "$CmdBase needs_input" }
                     )
                 }
             )
@@ -444,7 +462,7 @@ pause
 # ── Kill running instances ──────────────────────────────────
 function Stop-CliLight {
     $count = 0
-    Get-Process python -ErrorAction SilentlyContinue | ForEach-Object {
+    Get-Process python, pythonw -ErrorAction SilentlyContinue | ForEach-Object {
         try {
             $cmdline = (Get-CimInstance Win32_Process -Filter "ProcessId=$($_.Id)").CommandLine
             if ($cmdline -like '*cli_light*') {
